@@ -32,7 +32,7 @@ class ArgsHEmitter
   public:
     ArgsHEmitter(Edl* edl) : edl_(edl)
     {
-        file_.open(edl_->name_ + "_args_new.h");
+        file_.open(edl_->name_ + "_args.h");
     }
 
     void emit()

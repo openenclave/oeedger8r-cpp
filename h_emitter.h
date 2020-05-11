@@ -43,7 +43,7 @@ class HEmitter
     void emit_t_h()
     {
         gen_t_h_ = true;
-        file_.open(edl_->name_ + "_t_new.h");
+        file_.open(edl_->name_ + "_t.h");
         indent_ = "";
         emit_h();
         file_.close();
@@ -52,7 +52,7 @@ class HEmitter
     void emit_u_h()
     {
         gen_t_h_ = false;
-        file_.open(edl_->name_ + "_u_new.h");
+        file_.open(edl_->name_ + "_u.h");
         emit_h();
         file_.close();
     }

@@ -47,7 +47,7 @@ class CEmitter
     void emit_t_c()
     {
         gen_t_c_ = true;
-        file_.open(edl_->name_ + "_t_new.c");
+        file_.open(edl_->name_ + "_t.c");
         autogen_preamble(out());
         out() << "#include \"" + edl_->name_ + "_t.h\""
               << ""
@@ -76,7 +76,7 @@ class CEmitter
     void emit_u_c()
     {
         gen_t_c_ = false;
-        file_.open(edl_->name_ + "_u_new.c");
+        file_.open(edl_->name_ + "_u.c");
         autogen_preamble(out());
         out() << "#include \"" + edl_->name_ + "_u.h\""
               << ""
