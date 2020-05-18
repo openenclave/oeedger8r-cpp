@@ -15,10 +15,10 @@ Lexer::Lexer(const std::string& file)
         exit(1);
     };
     fseek(f, 0, SEEK_END);
-    long len = (long)ftell(f);
+    size_t len = static_cast<size_t>(ftell(f));
     char* contents = (char*)malloc(len + 1);
     fseek(f, 0, SEEK_SET);
-    if ((long)fread(contents, 1, len, f) != len)
+    if (fread(contents, 1, len, f) != len)
     {
         printf("error reading %s\n", file.c_str());
         exit(1);

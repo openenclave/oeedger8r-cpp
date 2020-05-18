@@ -56,13 +56,15 @@ Parser::Parser(
 
     size_t p = f.rfind('/');
     if (p != std::string::npos)
-        basename_ = std::string(f.begin() + p + 1, f.end());
+        basename_ =
+            std::string(f.begin() + static_cast<ptrdiff_t>(p) + 1, f.end());
     else
         basename_ = filename_;
 
     p = basename_.rfind('.');
     if (p != std::string::npos)
-        basename_ = std::string(basename_.begin(), basename_.begin() + p);
+        basename_ = std::string(
+            basename_.begin(), basename_.begin() + static_cast<ptrdiff_t>(p));
     lex_ = new Lexer(f);
     next();
 }
