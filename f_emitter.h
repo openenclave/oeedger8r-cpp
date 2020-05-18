@@ -33,6 +33,7 @@ class FEmitter
     FEmitter(Edl* edl, std::ofstream& file)
         : edl_(edl), file_(file), ecall_(true)
     {
+        (void)edl_;
     }
 
     void emit(Function* f, bool ecall)

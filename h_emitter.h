@@ -130,6 +130,7 @@ class HEmitter
 
     void marshalling_struct(Function* f, bool ocall = false)
     {
+        (void)ocall;
         out() << "typedef struct _" + f->name_ + "_args_t"
               << "{"
               << "    oe_result_t _result;";

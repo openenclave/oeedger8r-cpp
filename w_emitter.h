@@ -337,6 +337,7 @@ class WEmitter
 
     void save_deep_copy_pointers(Function* f)
     {
+        (void)f;
         if (gen_t())
             out() << "    /* No pointers to save for deep copy. */";
         out() << "";
@@ -344,6 +345,7 @@ class WEmitter
 
     void deep_copy_buffer(Function* f)
     {
+        (void)f;
         if (!gen_t())
             out() << "    /* Deep copy buffer. */"
                   << "    /* No pointers to save for deep copy. */"
@@ -352,11 +354,13 @@ class WEmitter
 
     void restore_pointers_deep_copy(Function* f)
     {
+        (void)f;
         out() << "    /* No pointers to restore for deep copy. */";
     }
 
     void deep_copy_free_pointers(Function* f)
     {
+        (void)f;
         if (!gen_t())
             out() << "    /* No `_ptrs` to free for deep copy. */"
                   << "";

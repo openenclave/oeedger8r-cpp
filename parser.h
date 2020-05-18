@@ -4,8 +4,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "ast.h"
 #include "lexer.h"

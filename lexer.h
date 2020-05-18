@@ -17,7 +17,7 @@ struct Token
 
     bool operator==(const char* str) const
     {
-        return strncmp(start_, str, end_ - start_) == 0;
+        return strncmp(start_, str, static_cast<size_t>(end_ - start_)) == 0;
     }
 
     bool operator!=(const char* str) const

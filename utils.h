@@ -50,7 +50,7 @@ inline std::string upper(const std::string& s)
 {
     std::string t(s);
     for (char& ch : t)
-        ch = toupper(ch);
+        ch = static_cast<char>(toupper(ch));
     return t;
 }
 
