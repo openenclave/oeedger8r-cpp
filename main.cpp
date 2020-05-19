@@ -58,7 +58,7 @@ int main(int argc, char** argv)
         else if (a == "--trusted-dir")
             untrusted_dir = argv[++i];
         else if (a == "--experimental")
-            continue;
+            ;
         else if (a == "--help")
         {
             printf("%s\n", usage);

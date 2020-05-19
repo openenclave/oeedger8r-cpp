@@ -21,6 +21,7 @@ class Parser
 
     Lexer* lex_;
     Token t_;
+    Token t1_;
     int line_;
     int col_;
 
@@ -34,6 +35,7 @@ class Parser
   public:
     Token next();
     Token peek();
+    Token peek1();
 
     bool print_loc(const char* msg_kind);
 

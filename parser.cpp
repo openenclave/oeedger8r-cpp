@@ -66,7 +66,9 @@ Parser::Parser(
         basename_ = std::string(
             basename_.begin(), basename_.begin() + static_cast<ptrdiff_t>(p));
     lex_ = new Lexer(f);
-    next();
+
+    t_ = lex_->next();
+    t1_ = lex_->next();
 }
 
 Parser::~Parser()
@@ -78,10 +80,16 @@ Token Parser::peek()
     return t_;
 }
 
+Token Parser::peek1()
+{
+    return t1_;
+}
+
 Token Parser::next()
 {
     Token t = t_;
-    t_ = lex_->next();
+    t_ = t1_;
+    t1_ = lex_->next();
     line_ = t.line_;
     col_ = t.col_;
     return t;
@@ -309,8 +317,21 @@ void Parser::parse_trusted()
     expect("{");
     while (peek() != '}')
     {
-	expect("public"); // OE does not support private.
-	trusted_funcs_.push_back(parse_function_decl(true));
+        bool is_private = true;
+        if (peek() == "public")
+            is_private = (next(), false);
+
+        trusted_funcs_.push_back(parse_function_decl(true));
+        if (is_private)
+        {
+            // Report error consistent with current edger8r.
+            // TODO: Report location.
+            printf(
+                "error: Function '%s': 'private' specifier is not supported by "
+                "oeedger8r\n",
+                trusted_funcs_.back()->name_.c_str());
+            exit(1);
+        }
     }
     expect("}");
     expect(";");
@@ -329,39 +350,69 @@ void Parser::parse_untrusted()
 
 Function* Parser::parse_function_decl(bool trusted)
 {
-    Function* f = new Function { {}, {}, {}, false, false };
+    Function* f = new Function{{}, {}, {}, false, false};
     f->rtype_ = parse_atype();
     Token name = next();
     if (!name.is_name())
-	ERROR("expecting function name, got %s",
-	      static_cast<std::string>(name).c_str());
+        ERROR(
+            "expecting function name, got %s",
+            static_cast<std::string>(name).c_str());
     f->name_ = name;
-    
+
     expect("(");
+
+    // Handle (void)
+    if (peek() == "void" && peek1() == ")")
+        next();
+
     while (peek() != ')')
     {
-	f->params_.push_back(parse_decl(true));
-	if (peek() != ')')
-	    expect(",");
+        f->params_.push_back(parse_decl(true));
+        if (peek() != ')')
+            expect(",");
     }
     expect(")");
-    for (int i=0; i < 2; ++i)
+
+    if (!trusted)
     {
-	if (peek() == "transition_using_threads" && !f->switchless_)
-	{
-	    next();
-	    f->switchless_ = true;	
-	}
-	else if(!trusted && peek() == "propagate_errno" && !f->errno_)
-	{
-	    next();
-	    f->errno_= true;
-	}
-    }            
+        if (peek() == "allow")
+        {
+            next();
+            expect("(");
+            while (peek() != ")")
+            {
+                Token t = next();
+                if (!t.is_name())
+                    ERROR(
+                        "expecting identifier, got %s",
+                        static_cast<std::string>(t).c_str());
+                if (peek() != ")")
+                    expect(",");
+            }
+            expect(")");
+            printf(
+                "Warning: Function '%s': Reentrant ocalls are not supported by "
+                "Open Enclave. Allow list ignored.\n",
+                static_cast<std::string>(name).c_str());
+        }
+    }
+
+    for (int i = 0; i < 2; ++i)
+    {
+        if (peek() == "transition_using_threads" && !f->switchless_)
+        {
+            next();
+            f->switchless_ = true;
+        }
+        else if (!trusted && peek() == "propagate_errno" && !f->errno_)
+        {
+            next();
+            f->errno_ = true;
+        }
+    }
     expect(";");
     return f;
 }
-
 
 Decl* Parser::parse_decl(bool fcn)
 {
