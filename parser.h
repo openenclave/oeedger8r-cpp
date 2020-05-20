@@ -32,7 +32,7 @@ class Parser
     std::vector<Function*> imported_trusted_funcs_;
     std::vector<Function*> imported_untrusted_funcs_;
 
-  public:
+  private:
     Token next();
     Token peek();
     Token peek1();
@@ -49,11 +49,21 @@ class Parser
     void parse_untrusted();
     Attrs* parse_attributes(bool fcn = true);
     Decl* parse_decl(bool fcn = true);
+    void parse_allow_list(bool trusted, const std::string& fname);
     Function* parse_function_decl(bool trusted = true);
     Type* parse_atype();
     Type* parse_atype1(Token t);
     Type* parse_atype2(Token t);
     Dims* parse_dims();
+
+  private:
+    void warn_allow_list(const std::string& fname);
+    void warn_non_portable(Function* f);
+    void error_size_count(Function* f);
+    void check_size_count_decls(
+        const std::string& parent_name,
+        bool is_function,
+        const std::vector<Decl*>& decls);
 
   private:
     void expect(const char* str);

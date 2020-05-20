@@ -293,21 +293,23 @@ void Parser::parse_struct_or_union(bool is_struct)
 {
     Token name = next();
     if (!name.is_name())
-	ERROR("expecting struct/union name, got %s",
-	      static_cast<std::string>(name).c_str());
-    
-    UserType* type = new UserType { name, is_struct ? Struct : Union, {}, {}};
+        ERROR(
+            "expecting struct/union name, got %s",
+            static_cast<std::string>(name).c_str());
+
+    UserType* type = new UserType{name, is_struct ? Struct : Union, {}, {}};
     expect("{");
     while (peek() != "}")
     {
-	Decl* decl = parse_decl(false);
-	if (decl->attrs_ && !is_struct)
-	    ERROR("attributes are not allowed for unions");
-	type->fields_.push_back(decl);
-	if (peek() != "}")
-	    expect(";");
+        Decl* decl = parse_decl(false);
+        if (decl->attrs_ && !is_struct)
+            ERROR("attributes are not allowed for unions");
+        type->fields_.push_back(decl);
+        if (peek() != "}")
+            expect(";");
     }
     types_.push_back(type);
+    check_size_count_decls(type->name_, false, type->fields_);
     expect("}");
     expect(";");
 }
@@ -348,6 +350,30 @@ void Parser::parse_untrusted()
     expect(";");
 }
 
+void Parser::parse_allow_list(bool trusted, const std::string& fname)
+{
+    if (!trusted)
+    {
+        if (peek() == "allow")
+        {
+            next();
+            expect("(");
+            while (peek() != ")")
+            {
+                Token t = next();
+                if (!t.is_name())
+                    ERROR(
+                        "expecting identifier, got %s",
+                        static_cast<std::string>(t).c_str());
+                if (peek() != ")")
+                    expect(",");
+            }
+            expect(")");
+            warn_allow_list(fname);
+        }
+    }
+}
+
 Function* Parser::parse_function_decl(bool trusted)
 {
     Function* f = new Function{{}, {}, {}, false, false};
@@ -372,30 +398,7 @@ Function* Parser::parse_function_decl(bool trusted)
             expect(",");
     }
     expect(")");
-
-    if (!trusted)
-    {
-        if (peek() == "allow")
-        {
-            next();
-            expect("(");
-            while (peek() != ")")
-            {
-                Token t = next();
-                if (!t.is_name())
-                    ERROR(
-                        "expecting identifier, got %s",
-                        static_cast<std::string>(t).c_str());
-                if (peek() != ")")
-                    expect(",");
-            }
-            expect(")");
-            printf(
-                "Warning: Function '%s': Reentrant ocalls are not supported by "
-                "Open Enclave. Allow list ignored.\n",
-                static_cast<std::string>(name).c_str());
-        }
-    }
+    parse_allow_list(trusted, f->name_);
 
     for (int i = 0; i < 2; ++i)
     {
@@ -411,6 +414,10 @@ Function* Parser::parse_function_decl(bool trusted)
         }
     }
     expect(";");
+
+    warn_non_portable(f);
+    error_size_count(f);
+    check_size_count_decls(f->name_, true, f->params_);
     return f;
 }
 
@@ -630,4 +637,135 @@ Dims* Parser::parse_dims()
     }
 
     return dims;
+}
+
+void Parser::warn_allow_list(const std::string& fname)
+{
+    printf(
+        "Warning: Function '%s': Reentrant ocalls are not supported by "
+        "Open Enclave. Allow list ignored.\n",
+        fname.c_str());
+}
+
+void Parser::warn_non_portable(Function* f)
+{
+    const char* fmt =
+        "Warning: Function '%s': %s has different sizes on Windows and "
+        "Linux. This enclave cannot be built in Linux and then safely "
+        "loaded in Windows.%s\n";
+    const char* suggestion = " Consider using uint64_t or uint32_t instead.";
+    for (Decl* p : f->params_)
+    {
+        Type* t = p->type_;
+        while (t->tag_ == Const || t->tag_ == Ptr)
+            t = t->t_;
+
+        if (t->tag_ == WChar)
+            printf(fmt, f->name_.c_str(), "wchar_t", "");
+        else if (t->tag_ == LDouble)
+            printf(fmt, f->name_.c_str(), "long double", "");
+        else if (t->tag_ == Long)
+            printf(fmt, f->name_.c_str(), "long", suggestion);
+        else if (t->tag_ == Unsigned && t->t_->tag_ == Long)
+            printf(fmt, f->name_.c_str(), "unsigned long", suggestion);
+    }
+}
+
+void Parser::error_size_count(Function* f)
+{
+    for (Decl* p : f->params_)
+    {
+        if (p->attrs_ && !p->attrs_->size_.is_empty() &&
+            !p->attrs_->count_.is_empty())
+        {
+            printf(
+                "error: Function '%s': simultaneous 'size' and 'count' "
+                "parameters 'size' and 'count' are not supported by "
+                "oeedger8r.",
+                f->name_.c_str());
+            exit(1);
+        }
+    }
+}
+
+static Token _get_size_or_count_attr(Decl* d)
+{
+    if (d->attrs_)
+    {
+        return !d->attrs_->size_.is_empty() ? d->attrs_->size_
+                                            : d->attrs_->count_;
+    }
+
+    return Token::empty();
+}
+
+static Decl* _get_decl(const std::vector<Decl*>& decls, const std::string& name)
+{
+    for (Decl* d : decls)
+    {
+        if (d->name_ == name)
+            return d;
+    }
+    return nullptr;
+}
+
+void Parser::check_size_count_decls(
+    const std::string& parent_name,
+    bool is_function,
+    const std::vector<Decl*>& decls)
+{
+    for (Decl* d : decls)
+    {
+        Token t = _get_size_or_count_attr(d);
+        if (t.is_empty() || !t.is_name())
+            continue;
+        // TODO: Correct filename.
+        line_ = t.line_;
+        col_ = t.col_;
+
+        Decl* sc_decl = _get_decl(decls, t);
+        if (sc_decl == nullptr)
+            ERROR(
+                "could not find declaration for '%s'.",
+                static_cast<std::string>(t).c_str());
+
+        Type* ty = sc_decl->type_;
+        if (ty->tag_ == Const)
+            ty = ty->t_;
+
+        if (sc_decl->dims_ && !sc_decl->dims_->empty())
+            ERROR("size/count has invalid type.");
+
+        switch (ty->tag_)
+        {
+            case Unsigned:
+                continue;
+
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+            case LLong:
+            case Int8:
+            case Int16:
+            case Int32:
+            case Int64:
+            {
+                printf(
+                    "Warning: %s '%s': Size or count parameter '%s' should not "
+                    "be signed.\n",
+                    is_function ? "Function" : "struct",
+                    parent_name.c_str(),
+                    static_cast<std::string>(t).c_str());
+                continue;
+            }
+
+            case Ptr:
+            case Struct:
+            case Union:
+                ERROR("size/count has invalid type.");
+            default:
+                break;
+        }
+    }
 }
