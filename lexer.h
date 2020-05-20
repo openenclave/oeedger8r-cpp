@@ -17,7 +17,9 @@ struct Token
 
     bool operator==(const char* str) const
     {
-        return strncmp(start_, str, static_cast<size_t>(end_ - start_)) == 0;
+        size_t tok_len = static_cast<size_t>(end_ - start_);
+        size_t str_len = static_cast<size_t>(strlen(str));
+        return (tok_len == str_len) && (strncmp(start_, str, tok_len) == 0);
     }
 
     bool operator!=(const char* str) const
