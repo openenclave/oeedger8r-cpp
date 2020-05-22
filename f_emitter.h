@@ -119,6 +119,54 @@ class FEmitter
               << "";
     }
 
+    void set_pointers_deep_copy(
+        const std::string& parent_condition,
+        const std::string& parent_expr,
+        const std::string& cmd,
+        Decl* parent_prop,
+        int level,
+        std::string indent = "    ")
+    {
+        UserType* ut = get_user_type_for_deep_copy(edl_, parent_prop);
+        if (!ut)
+            return;
+        iterate_deep_copyable_fields(ut, [&](Decl* prop) {
+            std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
+            std::string expr = parent_expr + op + prop->name_;
+            std::string size = psize(prop, "pargs_in->" + parent_expr + op);
+            std::string cond = parent_condition + " && pargs_in->" + expr;
+            std::string mt = mtype_str(prop);
+            out() << indent + "if (" + cond + ")"
+                  << indent + "    " + cmd + "(" + expr + ", " + size + ", " +
+                         mt + ");";
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, prop);
+            if (!ut)
+                return;
+
+            std::string count =
+                count_attr_str(prop->attrs_->count_, "pargs_in->");
+
+            if (count == "1" || count == "")
+            {
+                set_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent);
+            }
+            else
+            {
+                std::string idx = "_i_" + to_str(level);
+                std::string expr =
+                    parent_expr + op + prop->name_ + "[" + idx + "]";
+                out() << indent + "for (size_t " + idx + " = 0; " + idx +
+                             " < " + count + "; " + idx + "++)"
+                      << indent + "{";
+                set_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent + "    ");
+                out() << indent + "}";
+            }
+        });
+    }
+
     void set_in_in_out_pointers(Function* f)
     {
         bool empty = true;
@@ -126,13 +174,36 @@ class FEmitter
         {
             if (!p->attrs_ || !(p->attrs_->in_ || p->attrs_->inout_))
                 continue;
-            std::string size = psize(p);
+            std::string size = psize(p, "pargs_in->");
             std::string cmd = (p->attrs_->inout_) ? "OE_SET_IN_OUT_POINTER"
                                                   : "OE_SET_IN_POINTER";
             out() << "    if (pargs_in->" + p->name_ + ")"
                   << "        " + cmd + "(" + p->name_ + ", " + size + ", " +
                          mtype_str(p) + ");";
+
             empty = false;
+            UserType* ut = get_user_type_for_deep_copy(edl_, p);
+            if (!ut)
+                continue;
+
+            std::string count = count_attr_str(p->attrs_->count_, "pargs_in->");
+
+            if (count == "1" || count == "")
+            {
+                std::string cond = "pargs_in->" + p->name_;
+                std::string expr = p->name_;
+                set_pointers_deep_copy(cond, expr, cmd, p, 2, "    ");
+            }
+            else
+            {
+                std::string cond = "pargs_in->" + p->name_;
+                std::string expr = p->name_ + "[_i_1]";
+                out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
+                             "; _i_1++)"
+                      << "    {";
+                set_pointers_deep_copy(cond, expr, cmd, p, 2, "        ");
+                out() << "    }";
+            }
         }
         if (empty)
             out() << "    /* There were no in nor in-out parameters. */";
@@ -146,7 +217,7 @@ class FEmitter
         {
             if (!p->attrs_ || !(p->attrs_->out_ || p->attrs_->inout_))
                 continue;
-            std::string size = psize(p);
+            std::string size = psize(p, "pargs_in->");
             std::string cmd = (p->attrs_->inout_)
                                   ? "OE_COPY_AND_SET_IN_OUT_POINTER"
                                   : "OE_SET_OUT_POINTER";
@@ -154,6 +225,29 @@ class FEmitter
                   << "        " + cmd + "(" + p->name_ + ", " + size + ", " +
                          mtype_str(p) + ");";
             empty = false;
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, p);
+            if (!ut)
+                continue;
+
+            std::string count = count_attr_str(p->attrs_->count_, "pargs_in->");
+
+            if (count == "1" || count == "")
+            {
+                std::string cond = "pargs_in->" + p->name_;
+                std::string expr = p->name_;
+                set_pointers_deep_copy(cond, expr, cmd, p, 2, "    ");
+            }
+            else
+            {
+                std::string cond = "pargs_in->" + p->name_;
+                std::string expr = p->name_ + "[_i_1]";
+                out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
+                             "; _i_1++)"
+                      << "    {";
+                set_pointers_deep_copy(cond, expr, cmd, p, 2, "        ");
+                out() << "    }";
+            }
         }
         if (empty)
             out() << "    /* There were no out nor in-out parameters. */";
