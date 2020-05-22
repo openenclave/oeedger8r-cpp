@@ -206,24 +206,25 @@ inline std::string btype(Type* t)
     return atype_str(t);
 }
 
-inline std::string count_attr_str(const Token& t)
+inline std::string count_attr_str(
+    const Token& t,
+    const std::string& prefix = "")
 {
     if (t.is_name())
-        return "pargs_in->" + static_cast<std::string>(t);
+        return prefix + static_cast<std::string>(t);
     else
         return t;
 }
 
-inline std::string size_attr_str(const Token& t)
+inline std::string size_attr_str(const Token& t, const std::string& prefix = "")
 {
-    return count_attr_str(t);
+    return count_attr_str(t, prefix);
 }
 
-inline std::string psize(Decl* p)
+inline std::string psize(Decl* p, const std::string& prefix = "")
 {
     if (p->attrs_ && (p->attrs_->string_ || p->attrs_->wstring_))
-        return "pargs_in->" + p->name_ + "_len * sizeof(" + btype(p->type_) +
-               ")";
+        return prefix + p->name_ + "_len * sizeof(" + btype(p->type_) + ")";
     if (p->dims_ && !p->dims_->empty())
         return "sizeof(" + decl_str("", p->type_, p->dims_) + ")";
     if (p->type_->tag_ == Foreign && p->attrs_ && p->attrs_->isary_)
@@ -235,11 +236,17 @@ inline std::string psize(Decl* p)
     else if (p->type_->tag_ == Foreign && p->attrs_ && p->attrs_->isptr_)
         s = "sizeof(*(" + p->type_->name_ + ")0)";
 
+    if (!p->attrs_->size_.is_empty() && !p->attrs_->count_.is_empty())
+        return "(" + size_attr_str(p->attrs_->size_, prefix) + " * " +
+               count_attr_str(p->attrs_->count_, prefix) + ")";
+
     if (p->attrs_ && !p->attrs_->count_.is_empty())
-        return "((size_t)" + count_attr_str(p->attrs_->count_) + " * " + s +
-               ")";
+        return "((size_t)" + count_attr_str(p->attrs_->count_, prefix) + " * " +
+               s + ")";
+
     if (p->attrs_ && !p->attrs_->size_.is_empty())
-        return size_attr_str(p->attrs_->size_);
+        return size_attr_str(p->attrs_->size_, prefix);
+
     return s;
 }
 
@@ -249,6 +256,55 @@ inline std::string to_str(const T& t)
     std::ostringstream os;
     os << t;
     return os.str();
+}
+
+inline UserType* get_user_type(Edl* edl, const std::string& name)
+{
+    for (UserType* t : edl->types_)
+    {
+        if (t->name_ == name)
+            return t;
+    }
+    return nullptr;
+}
+
+template <typename Action>
+void iterate_deep_copyable_fields(UserType* user_type, Action&& action)
+{
+    if (user_type->tag_ != Struct)
+        return;
+
+    for (Decl* prop : user_type->fields_)
+    {
+        if (prop->attrs_)
+            action(prop);
+    }
+}
+
+inline UserType* get_user_type_for_deep_copy(Edl* edl, Decl* d)
+{
+    Type* t = d->type_;
+    UserType* ut = nullptr;
+    if (t->tag_ != Ptr || !d->attrs_)
+        return nullptr;
+
+    // Unwrap first level * and const.
+    t = t->t_;
+    if (t->tag_ == Const)
+        t = t->t_;
+
+    // EDL types can masquerade as foregin types. Depends on what
+    // the parser wants to do.
+    if (t->tag_ == Foreign || t->tag_ == Struct)
+        ut = get_user_type(edl, t->name_);
+    if (!ut)
+        return nullptr;
+
+    bool deep_copyable = false;
+    iterate_deep_copyable_fields(
+        ut, [&deep_copyable](Decl*) { deep_copyable = true; });
+
+    return deep_copyable ? ut : nullptr;
 }
 
 #endif // UTILS_H
