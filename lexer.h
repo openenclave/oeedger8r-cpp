@@ -64,7 +64,7 @@ struct Token
 
     operator std::string() const
     {
-        return std::string(start_, end_);
+        return is_empty() ? "" : std::string(start_, end_);
     }
 
     static Token empty()
