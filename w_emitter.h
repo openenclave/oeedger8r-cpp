@@ -238,7 +238,7 @@ class WEmitter
         {
             if (p->attrs_ && (p->attrs_->in_ || p->attrs_->inout_))
             {
-                std::string size = replace(psize(p), "pargs_in->", "_args.");
+                std::string size = psize(p, "_args.");
                 out() << "    if (" + p->name_ + ")"
                       << "        OE_ADD_SIZE(_input_buffer_size, " + size +
                              ");";
@@ -258,7 +258,7 @@ class WEmitter
         {
             if (p->attrs_ && (p->attrs_->out_ || p->attrs_->inout_))
             {
-                std::string size = replace(psize(p), "pargs_in->", "_args.");
+                std::string size = psize(p, "_args.");
                 out() << "    if (" + p->name_ + ")"
                       << "        OE_ADD_SIZE(_output_buffer_size, " + size +
                              ");";
@@ -279,7 +279,7 @@ class WEmitter
             if (p->attrs_ && (p->attrs_->in_ || p->attrs_->inout_))
             {
                 std::string mt = mtype_str(p);
-                std::string size = replace(psize(p), "pargs_in->", "_args.");
+                std::string size = psize(p, "_args.");
                 std::string write_fcn = p->attrs_->inout_
                                             ? "OE_WRITE_IN_OUT_PARAM"
                                             : "OE_WRITE_IN_PARAM";
@@ -301,7 +301,7 @@ class WEmitter
         {
             if (p->attrs_ && (p->attrs_->out_ || p->attrs_->inout_))
             {
-                std::string size = replace(psize(p), "pargs_in->", "_args.");
+                std::string size = psize(p, "_args.");
                 std::string read_fcn = p->attrs_->inout_
                                            ? "OE_READ_IN_OUT_PARAM"
                                            : "OE_READ_OUT_PARAM";
