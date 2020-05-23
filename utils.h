@@ -258,14 +258,21 @@ inline std::string to_str(const T& t)
     return os.str();
 }
 
-inline UserType* get_user_type(Edl* edl, const std::string& name)
+inline UserType* get_user_type(
+    const std::vector<UserType*>& types,
+    const std::string& name)
 {
-    for (UserType* t : edl->types_)
+    for (UserType* t : types)
     {
         if (t->name_ == name)
             return t;
     }
     return nullptr;
+}
+
+inline UserType* get_user_type(Edl* edl, const std::string& name)
+{
+    return get_user_type(edl->types_, name);
 }
 
 template <typename Action>

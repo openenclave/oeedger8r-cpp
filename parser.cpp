@@ -418,6 +418,7 @@ Function* Parser::parse_function_decl(bool trusted)
     warn_non_portable(f);
     error_size_count(f);
     check_size_count_decls(f->name_, true, f->params_);
+    check_deep_copy_struct_by_value(f);
     return f;
 }
 
@@ -766,6 +767,36 @@ void Parser::check_size_count_decls(
                 ERROR("size/count has invalid type.");
             default:
                 break;
+        }
+    }
+}
+
+void Parser::check_deep_copy_struct_by_value(Function* f)
+{
+    for (Decl* p : f->params_)
+    {
+        Type* type = p->type_;
+        if (type->tag_ == Const)
+            type = type->t_;
+        if (type->tag_ != Struct && type->tag_ != Foreign)
+            continue;
+
+        UserType* ut = get_user_type(types_, type->name_);
+        if (!ut)
+            continue;
+
+        for (Decl* field : ut->fields_)
+        {
+            if (field->attrs_)
+            {
+                printf(
+                    "error: the structure declaration \"%s\" specifies a "
+                    "deep copy is expected. Referenced by value in function "
+                    "\"%s\" detected.",
+                    type->name_.c_str(),
+                    f->name_.c_str());
+                exit(1);
+            }
         }
     }
 }

@@ -65,6 +65,8 @@ class Parser
         bool is_function,
         const std::vector<Decl*>& decls);
 
+    void check_deep_copy_struct_by_value(Function* f);
+
   private:
     void expect(const char* str);
     Edl* parse_body();
