@@ -125,7 +125,8 @@ class FEmitter
         const std::string& cmd,
         Decl* parent_prop,
         int level,
-        std::string indent = "    ")
+        std::string indent = "    ",
+        bool is_out = false)
     {
         UserType* ut = get_user_type_for_deep_copy(edl_, parent_prop);
         if (!ut)
@@ -134,7 +135,8 @@ class FEmitter
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
             std::string size = psize(prop, "pargs_in->" + parent_expr + op);
-            std::string cond = parent_condition + " && pargs_in->" + expr;
+            std::string cond = parent_condition + " && " + (is_out ? "!" : "") +
+                               "pargs_in->" + expr;
             std::string mt = mtype_str(prop);
             out() << indent + "if (" + cond + ")"
                   << indent + "    " + cmd + "(" + expr + ", " + size + ", " +
@@ -150,7 +152,7 @@ class FEmitter
             if (count == "1" || count == "")
             {
                 set_pointers_deep_copy(
-                    cond, expr, cmd, prop, level + 1, indent);
+                    cond, expr, cmd, prop, level + 1, indent, is_out);
             }
             else
             {
@@ -160,8 +162,10 @@ class FEmitter
                 out() << indent + "for (size_t " + idx + " = 0; " + idx +
                              " < " + count + "; " + idx + "++)"
                       << indent + "{";
+                std::string cond = parent_condition + " && pargs_in->" +
+                                   parent_expr + op + prop->name_;
                 set_pointers_deep_copy(
-                    cond, expr, cmd, prop, level + 1, indent + "    ");
+                    cond, expr, cmd, prop, level + 1, indent + "    ", is_out);
                 out() << indent + "}";
             }
         });
@@ -236,7 +240,8 @@ class FEmitter
             {
                 std::string cond = "pargs_in->" + p->name_;
                 std::string expr = p->name_;
-                set_pointers_deep_copy(cond, expr, cmd, p, 2, "    ");
+                set_pointers_deep_copy(
+                    cond, expr, cmd, p, 2, "    ", p->attrs_->out_);
             }
             else
             {
@@ -245,7 +250,8 @@ class FEmitter
                 out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
                              "; _i_1++)"
                       << "    {";
-                set_pointers_deep_copy(cond, expr, cmd, p, 2, "        ");
+                set_pointers_deep_copy(
+                    cond, expr, cmd, p, 2, "        ", p->attrs_->out_);
                 out() << "    }";
             }
         }
