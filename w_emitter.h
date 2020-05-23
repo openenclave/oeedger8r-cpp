@@ -229,44 +229,155 @@ class WEmitter
             out() << "    ";
     }
 
-    void compute_input_buffer_size(Function* f)
+    void add_size_deep_copy(
+        const std::string& parent_condition,
+        const std::string& parent_expr,
+        const std::string& buffer_size,
+        Decl* parent_prop,
+        int level,
+        std::string indent = "    ")
     {
-        out() << "    OE_ADD_SIZE(_input_buffer_size, sizeof(" + f->name_ +
+        UserType* ut = get_user_type_for_deep_copy(edl_, parent_prop);
+        if (!ut)
+            return;
+        iterate_deep_copyable_fields(ut, [&](Decl* prop) {
+            std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
+            std::string expr = parent_expr + op + prop->name_;
+            std::string size = psize(prop, "_args." + parent_expr + op);
+            std::string cond = parent_condition + " && " + expr;
+            out() << indent + "if (" + cond + ")"
+                  << indent + "    OE_ADD_SIZE(" + buffer_size + ", " + size +
+                         ");";
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, prop);
+            if (!ut)
+                return;
+
+            std::string count = count_attr_str(prop->attrs_->count_, "_args.");
+
+            if (count == "1" || count == "")
+            {
+                add_size_deep_copy(
+                    cond, expr, buffer_size, prop, level + 1, indent);
+            }
+            else
+            {
+                std::string idx = "_i_" + to_str(level);
+                std::string expr =
+                    parent_expr + op + prop->name_ + "[" + idx + "]";
+                out() << indent + "for (size_t " + idx + " = 0; " + idx +
+                             " < " + count + "; " + idx + "++)"
+                      << indent + "{";
+                add_size_deep_copy(
+                    cond, expr, buffer_size, prop, level + 1, indent + "    ");
+                out() << indent + "}";
+            }
+        });
+    }
+
+    void compute_buffer_size(Function* f, bool input)
+    {
+        std::string buffer_size =
+            input ? "_input_buffer_size" : "_output_buffer_size";
+        out() << "    OE_ADD_SIZE(" + buffer_size + ", sizeof(" + f->name_ +
                      "_args_t));";
         bool empty = true;
         for (Decl* p : f->params_)
         {
-            if (p->attrs_ && (p->attrs_->in_ || p->attrs_->inout_))
+            if (!p->attrs_)
+                continue;
+
+            if (!p->attrs_->inout_ &&
+                !(input ? p->attrs_->in_ : p->attrs_->out_))
+                continue;
+
+            std::string size = psize(p, "_args.");
+            out() << "    if (" + p->name_ + ")"
+                  << "        OE_ADD_SIZE(" + buffer_size + ", " + size + ");";
+            empty = false;
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, p);
+            if (!ut)
+                continue;
+
+            std::string count = count_attr_str(p->attrs_->count_, "_args.");
+
+            if (count == "1" || count == "")
             {
-                std::string size = psize(p, "_args.");
-                out() << "    if (" + p->name_ + ")"
-                      << "        OE_ADD_SIZE(_input_buffer_size, " + size +
-                             ");";
-                empty = false;
+                std::string cond = p->name_;
+                std::string expr = p->name_;
+                add_size_deep_copy(cond, expr, buffer_size, p, 2, "    ");
+            }
+            else
+            {
+                std::string cond = p->name_;
+                std::string expr = p->name_ + "[_i_1]";
+                out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
+                             "; _i_1++)"
+                      << "    {";
+                add_size_deep_copy(cond, expr, buffer_size, p, 2, "        ");
+                out() << "    }";
             }
         }
         if (empty)
             out() << "    /* There were no corresponding parameters. */";
     }
 
+    void compute_input_buffer_size(Function* f)
+    {
+        compute_buffer_size(f, true);
+    }
+
     void compute_output_buffer_size(Function* f)
     {
-        out() << "    OE_ADD_SIZE(_output_buffer_size, sizeof(" + f->name_ +
-                     "_args_t));";
-        bool empty = true;
-        for (Decl* p : f->params_)
-        {
-            if (p->attrs_ && (p->attrs_->out_ || p->attrs_->inout_))
+        compute_buffer_size(f, false);
+    }
+
+    void serialize_pointers_deep_copy(
+        const std::string& parent_condition,
+        const std::string& parent_expr,
+        const std::string& cmd,
+        Decl* parent_prop,
+        int level,
+        std::string indent = "    ")
+    {
+        UserType* ut = get_user_type_for_deep_copy(edl_, parent_prop);
+        if (!ut)
+            return;
+        iterate_deep_copyable_fields(ut, [&](Decl* prop) {
+            std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
+            std::string expr = parent_expr + op + prop->name_;
+            std::string size = psize(prop, "_args." + parent_expr + op);
+            std::string cond = parent_condition + " && " + expr;
+            std::string mt = mtype_str(prop);
+            out() << indent + "if (" + cond + ")"
+                  << indent + "    " + cmd + "(" + expr + ", " + size + ", " +
+                         mt + ");";
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, prop);
+            if (!ut)
+                return;
+
+            std::string count = count_attr_str(prop->attrs_->count_, "_args.");
+
+            if (count == "1" || count == "")
             {
-                std::string size = psize(p, "_args.");
-                out() << "    if (" + p->name_ + ")"
-                      << "        OE_ADD_SIZE(_output_buffer_size, " + size +
-                             ");";
-                empty = false;
+                serialize_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent);
             }
-        }
-        if (empty)
-            out() << "    /* There were no corresponding parameters. */";
+            else
+            {
+                std::string idx = "_i_" + to_str(level);
+                std::string expr =
+                    parent_expr + op + prop->name_ + "[" + idx + "]";
+                out() << indent + "for (size_t " + idx + " = 0; " + idx +
+                             " < " + count + "; " + idx + "++)"
+                      << indent + "{";
+                serialize_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent + "    ");
+                out() << indent + "}";
+            }
+        });
     }
 
     void serialize_buffer_inputs(Function* f)
@@ -280,17 +391,116 @@ class WEmitter
             {
                 std::string mt = mtype_str(p);
                 std::string size = psize(p, "_args.");
-                std::string write_fcn = p->attrs_->inout_
-                                            ? "OE_WRITE_IN_OUT_PARAM"
-                                            : "OE_WRITE_IN_PARAM";
+                std::string cmd = p->attrs_->inout_ ? "OE_WRITE_IN_OUT_PARAM"
+                                                    : "OE_WRITE_IN_PARAM";
                 out() << "    if (" + p->name_ + ")"
-                      << "        " + write_fcn + "(" + p->name_ + ", " + size +
+                      << "        " + cmd + "(" + p->name_ + ", " + size +
                              ", " + mt + ");";
                 empty = false;
+
+                UserType* ut = get_user_type_for_deep_copy(edl_, p);
+                if (!ut)
+                    continue;
+
+                std::string count = count_attr_str(p->attrs_->count_, "_args.");
+
+                if (count == "1" || count == "")
+                {
+                    std::string cond = p->name_;
+                    std::string expr = p->name_;
+                    serialize_pointers_deep_copy(cond, expr, cmd, p, 2, "    ");
+                }
+                else
+                {
+                    std::string cond = p->name_;
+                    std::string expr = p->name_ + "[_i_1]";
+                    out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
+                                 "; _i_1++)"
+                          << "    {";
+                    serialize_pointers_deep_copy(
+                        cond, expr, cmd, p, 2, "        ");
+                    out() << "    }";
+                }
             }
         }
         if (empty)
             out() << "    /* There were no in nor in-out parameters. */";
+    }
+
+    void unmarshal_deep_copy(
+        Decl* p,
+        std::string parent_expr,
+        const std::string& indent,
+        const std::string& cmd,
+        int level = 1)
+    {
+        std::string expr = parent_expr + p->name_;
+        UserType* ut = get_user_type_for_deep_copy(edl_, p);
+        if (!ut)
+        {
+            return;
+        }
+        // Deep copied structure. Unmarshal individual fields.
+
+        out() << indent + "if (" + expr + ")" << indent + "{";
+        {
+            if (!parent_expr.empty())
+                parent_expr += ".";
+            std::string size = psize(p, parent_expr);
+            std::string p_type = atype_str(p->type_);
+            out()
+                << indent + "    " + p_type + " _rhs = (" + p_type +
+                       ") (_output_buffer + _output_buffer_offset); (void)_rhs;"
+                << indent + "    OE_ADD_SIZE(_output_buffer_offset, (size_t)" +
+                       size + ");";
+
+            std::string count = count_attr_str(p->attrs_->count_, parent_expr);
+            std::string idx = "_i_" + to_str(level);
+
+            out() << indent + "    for (size_t " + idx + " = 0; " + idx +
+                         " < " + count + "; " + idx + "++)"
+                  << indent + "    {";
+
+            for (Decl* field : ut->fields_)
+            {
+                // TODO: Do not copy over size.
+                if (field->type_->tag_ != Ptr || !field->attrs_ ||
+                    field->attrs_->user_check_)
+                {
+                    std::string prop_val =
+                        expr + "[" + idx + "]." + field->name_;
+                    out() << indent + "        " + prop_val + " = _rhs[" + idx +
+                                 "]." + field->name_ + ";";
+                }
+            }
+
+            for (Decl* field : ut->fields_)
+            {
+                if (field->type_->tag_ != Ptr || !field->attrs_ ||
+                    field->attrs_->user_check_)
+                    continue;
+
+                std::string prop_val = expr + "[" + idx + "]." + field->name_;
+                UserType* field_ut = get_user_type_for_deep_copy(edl_, field);
+                if (!field_ut)
+                {
+                    std::string size = psize(field, expr + "[" + idx + "].");
+                    out() << indent + "        " + cmd + "(" + prop_val + ", " +
+                                 size + ");";
+                }
+                else
+                {
+                    unmarshal_deep_copy(
+                        field,
+                        expr + "[" + idx + "].",
+                        indent + "        ",
+                        cmd,
+                        level + 1);
+                }
+            }
+            out() << indent + "    }";
+        }
+        out() << indent + "}";
     }
 
     void unmarshal_outputs(Function* f)
@@ -301,10 +511,10 @@ class WEmitter
         {
             if (p->attrs_ && (p->attrs_->out_ || p->attrs_->inout_))
             {
+                empty = false;
                 std::string size = psize(p, "_args.");
-                std::string read_fcn = p->attrs_->inout_
-                                           ? "OE_READ_IN_OUT_PARAM"
-                                           : "OE_READ_OUT_PARAM";
+                std::string cmd = p->attrs_->inout_ ? "OE_READ_IN_OUT_PARAM"
+                                                    : "OE_READ_OUT_PARAM";
                 if (p->attrs_->string_ || p->attrs_->wstring_)
                 {
                     out() << "    " + check +
@@ -313,9 +523,15 @@ class WEmitter
                                  "_args." +
                                  p->name_ + "_len);";
                 }
-                out() << "    " + read_fcn + "(" + p->name_ + ", (size_t)(" +
-                             size + "));";
-                empty = false;
+                UserType* ut = get_user_type_for_deep_copy(edl_, p);
+                if (!ut)
+                {
+                    out() << "    " + cmd + "(" + p->name_ + ", (size_t)(" +
+                                 size + "));";
+                    continue;
+                }
+
+                unmarshal_deep_copy(p, "", "    ", cmd, 1);
             }
         }
         if (empty)
