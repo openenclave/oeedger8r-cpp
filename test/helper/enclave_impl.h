@@ -49,14 +49,28 @@ struct _oe_enclave
         const void* end = static_cast<const uint8_t*>(ptr) + size;
         for (auto p : _allocated_memory)
         {
-            if (ptr >= p.second)
-                continue;
-            if (end <= p.first)
-                continue;
-            return true;
+            if (ptr >= p.first && end <= p.second)
+                return true;
         }
 
         return false;
+    }
+
+    bool is_outside_enclave(const void* ptr, uint64_t size)
+    {
+        if (!ptr)
+            return false;
+
+        const void* end = static_cast<const uint8_t*>(ptr) + size;
+        for (auto p : _allocated_memory)
+        {
+            if (ptr >= p.first && ptr <= p.second)
+                return false;
+            if (end >= p.first && end <= p.second)
+                return false;
+        }
+
+        return true;
     }
 };
 

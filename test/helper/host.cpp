@@ -26,32 +26,46 @@ extern "C" oe_result_t oe_call_enclave_function(
     size_t output_buffer_size,
     size_t* output_bytes_written)
 {
+    oe_result_t result = OE_FAILURE;
     oe_enclave_t* previous_enclave = _enclave;
     _enclave = enclave;
 
-    void* enc_input_buffer = enclave->malloc(input_buffer_size);
-    memcpy(enc_input_buffer, input_buffer, input_buffer_size);
-    void* enc_output_buffer = enclave->malloc(output_buffer_size);
-    memcpy(enc_output_buffer, output_buffer, output_buffer_size);
-    size_t* enc_output_bytes_written = (size_t*)enclave->malloc(sizeof(size_t));
+    if (!_enclave->is_outside_enclave(input_buffer, input_buffer_size) ||
+        !_enclave->is_outside_enclave(output_buffer, output_buffer_size))
+    {
+        result = OE_INVALID_PARAMETER;
+        goto done;
+    }
 
-    __oe_ecalls_table[function_id](
-        enc_input_buffer,
-        input_buffer_size,
-        enc_output_buffer,
-        output_buffer_size,
-        enc_output_bytes_written);
+    {
+        void* enc_input_buffer = enclave->malloc(input_buffer_size);
+        memcpy(enc_input_buffer, input_buffer, input_buffer_size);
+        void* enc_output_buffer = enclave->malloc(output_buffer_size);
+        memset(enc_output_buffer, 0, output_buffer_size);
+        size_t* enc_output_bytes_written =
+            (size_t*)enclave->malloc(sizeof(size_t));
 
-    *output_bytes_written = *enc_output_bytes_written;
-    memcpy(output_buffer, enc_output_buffer, output_buffer_size);
+        __oe_ecalls_table[function_id](
+            enc_input_buffer,
+            input_buffer_size,
+            enc_output_buffer,
+            output_buffer_size,
+            enc_output_bytes_written);
 
-    enclave->free(enc_output_bytes_written);
-    enclave->free(enc_output_buffer);
-    enclave->free(enc_input_buffer);
+        *output_bytes_written = *enc_output_bytes_written;
+        memcpy(output_buffer, enc_output_buffer, output_buffer_size);
 
-    oe_result_t result = *(oe_result_t*)output_buffer;
+        enclave->free(enc_output_bytes_written);
+        enclave->free(enc_output_buffer);
+        enclave->free(enc_input_buffer);
+        result = *(oe_result_t*)output_buffer;
+    }
 
+done:
     _enclave = previous_enclave;
+
+    if (result == OE_INVALID_PARAMETER)
+        printf("ecall returned OE_INVALID_PARAMETER\n");
 
     return result;
 }
@@ -80,4 +94,9 @@ extern "C" oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
 {
     delete enclave;
     return OE_OK;
+}
+
+extern "C" uint32_t oe_get_create_flags(void)
+{
+    return 0;
 }
