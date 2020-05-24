@@ -1,0 +1,13 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  trusted {
+    public int enc_hello([string, in] const char* msg,
+                         [out] int* out_val);
+  };
+  untrusted {
+    int host_hello([string, in] const char* msg,
+                   [out] int* out_val);
+  };
+};
