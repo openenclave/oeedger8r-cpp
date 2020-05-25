@@ -13,18 +13,33 @@ typedef void (*oe_ocall_func_t)(
     size_t output_buffer_size,
     size_t* output_bytes_written);
 
+typedef void (*oe_ecall_func_t)(
+    const uint8_t* input_buffer,
+    size_t input_buffer_size,
+    uint8_t* output_buffer,
+    size_t output_buffer_size,
+    size_t* output_bytes_written);
+
 struct _oe_enclave
 {
     oe_result_t status;
     std::map<void*, void*> _allocated_memory;
     const oe_ocall_func_t* _ocall_table;
     uint32_t _num_ocalls;
+    const oe_ecall_func_t* _ecall_table;
+    uint32_t _num_ecalls;
+    void (*_set_enclave)(oe_enclave_t*);
+    void* _lib_handle;
 
     _oe_enclave(const oe_ocall_func_t* ocall_table, uint32_t num_ocalls)
     {
         status = OE_OK;
         _ocall_table = ocall_table;
         _num_ocalls = num_ocalls;
+        _ecall_table = nullptr;
+        _num_ecalls = 0;
+        _set_enclave = nullptr;
+        _lib_handle = nullptr;
     }
 
     void* malloc(uint64_t size)
@@ -73,8 +88,5 @@ struct _oe_enclave
         return true;
     }
 };
-
-OE_EXPORT
-extern thread_local oe_enclave_t* _enclave;
 
 #endif

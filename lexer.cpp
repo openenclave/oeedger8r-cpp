@@ -10,9 +10,9 @@ Lexer::Lexer(const std::string& file)
 {
     FILE* f = NULL;
 #if _WIN32    
-    fopen_s(&f, file.c_str(), "r");
+    fopen_s(&f, file.c_str(), "rb");
 #else
-    f = fopen(file.c_str(), "r");
+    f = fopen(file.c_str(), "rb");
 #endif
     if (!f)
     {

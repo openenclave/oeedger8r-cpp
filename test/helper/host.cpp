@@ -1,21 +1,20 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
 #include <openenclave/edger8r/host.h>
 
 #include "enclave_impl.h"
 
+extern "C"
+{
+
 thread_local oe_enclave_t* _enclave;
-
-typedef void (*oe_ecall_func_t)(
-    const void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* output_bytes_written);
-
-extern "C" oe_ecall_func_t __oe_ecalls_table[];
-extern "C" size_t __oe_ecalls_table_size;
 
 extern "C" oe_result_t oe_call_enclave_function(
     oe_enclave_t* enclave,
@@ -29,6 +28,7 @@ extern "C" oe_result_t oe_call_enclave_function(
     oe_result_t result = OE_FAILURE;
     oe_enclave_t* previous_enclave = _enclave;
     _enclave = enclave;
+    enclave->_set_enclave(enclave);
 
     if (!_enclave->is_outside_enclave(input_buffer, input_buffer_size) ||
         !_enclave->is_outside_enclave(output_buffer, output_buffer_size))
@@ -45,10 +45,10 @@ extern "C" oe_result_t oe_call_enclave_function(
         size_t* enc_output_bytes_written =
             (size_t*)enclave->malloc(sizeof(size_t));
 
-        __oe_ecalls_table[function_id](
-            enc_input_buffer,
+        enclave->_ecall_table[function_id](
+            static_cast<const uint8_t*>(enc_input_buffer),
             input_buffer_size,
-            enc_output_buffer,
+            static_cast<uint8_t*>(enc_output_buffer),
             output_buffer_size,
             enc_output_bytes_written);
 
@@ -70,7 +70,7 @@ done:
     return result;
 }
 
-extern "C" oe_result_t oe_create_enclave(
+oe_result_t oe_create_enclave(
     const char* path,
     oe_enclave_type_t type,
     uint32_t flags,
@@ -86,17 +86,26 @@ extern "C" oe_result_t oe_create_enclave(
     OE_UNUSED(settings);
     OE_UNUSED(setting_count);
 
-    *enclave = new _oe_enclave(ocall_table, num_ocalls);
+    oe_enclave_t* enc = new _oe_enclave(ocall_table, num_ocalls);
+#if _WIN32    
+    HMODULE h = LoadLibraryExA(path, NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+    *(void**)&enc->_set_enclave = GetProcAddress(h, "set_enclave_object");
+#else
+#endif
+    
+    
     return OE_OK;
 }
 
-extern "C" oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
+oe_result_t oe_terminate_enclave(oe_enclave_t* enclave)
 {
     delete enclave;
     return OE_OK;
 }
 
-extern "C" uint32_t oe_get_create_flags(void)
+uint32_t oe_get_create_flags(void)
 {
     return 0;
+}
+
 }

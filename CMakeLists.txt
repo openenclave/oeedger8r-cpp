@@ -7,4 +7,9 @@ project(oeedger8r)
 add_executable(oeedger8r main.cpp parser.cpp lexer.cpp)
 set_property(TARGET oeedger8r PROPERTY POSITION_INDEPENDENT_CODE on)
 
-add_subdirectory(test)
+if (UNIX)
+  # corelibc causes problems when compiling the enclave in virtual mode
+  # using msvc. Enable tests for now only on Linux.
+  # OE SDK will thoroughly test oeedger8r on both Linux and Windows.
+  add_subdirectory(test)
+endif ()

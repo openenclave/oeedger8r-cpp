@@ -116,14 +116,14 @@ class CEmitter
 
     void ecalls_table()
     {
-        out() << "OE_EXPORT oe_ecall_func_t __oe_ecalls_table[] = {";
+        out() << "oe_ecall_func_t __oe_ecalls_table[] = {";
         size_t idx = 0;
         for (Function* f : edl_->trusted_funcs_)
             out() << "    (oe_ecall_func_t) ecall_" + f->name_ +
                          (++idx < edl_->trusted_funcs_.size() ? "," : "");
         out() << "};"
               << ""
-              << "OE_EXPORT size_t __oe_ecalls_table_size = "
+              << "size_t __oe_ecalls_table_size = "
                  "OE_COUNTOF(__oe_ecalls_table);"
               << "";
     }

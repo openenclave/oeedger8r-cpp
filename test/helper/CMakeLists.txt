@@ -68,7 +68,11 @@ else ()
 
 endif ()
 
-set(COMPILE_FLAGS -fvisibility=hidden -fPIC)
+if (WIN32)
+  set(COMPILE_FLAGS "")
+else ()
+  set(COMPILE_FLAGS -fvisibility=hidden -fPIC)
+endif ()
 
 add_library(oeedger8r_test_enclave STATIC enclave.cpp ${HEADERS})
 
