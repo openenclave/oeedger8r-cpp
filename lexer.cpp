@@ -8,7 +8,12 @@
 Lexer::Lexer(const std::string& file)
     : filename_(file), file_(0), p_(0), line_(0), col_(0)
 {
-    FILE* f = fopen(file.c_str(), "r");
+    FILE* f = NULL;
+#if _WIN32    
+    fopen_s(&f, file.c_str(), "r");
+#else
+    f = fopen(file.c_str(), "r");
+#endif
     if (!f)
     {
         printf("error: cannot open file %s\n", file.c_str());
@@ -35,7 +40,7 @@ Lexer::Lexer(const std::string& file)
 
 Lexer::~Lexer()
 {
-    // file_ is intended to outlive the lexer.
+    // file_ is intended to out-live the lexer.
     // It is not freed.
 }
 
@@ -118,7 +123,7 @@ Token Lexer::next()
         while (isalnum(*++p_) || *p_ == '_')
             ;
         t.end_ = p_;
-        col_ += p_ - t.start_;
+        col_ += static_cast<int>(p_ - t.start_);
         return t;
     }
 
@@ -128,7 +133,7 @@ Token Lexer::next()
         while (isdigit(*++p_))
             ;
         t.end_ = p_;
-        col_ += p_ - t.start_;
+        col_ += static_cast<int>(p_ - t.start_);
         return t;
     }
 
@@ -145,7 +150,7 @@ Token Lexer::next()
 	    exit(1);
 	}
         t.end_ = ++p_;
-        col_ += p_ - t.start_;
+        col_ += static_cast<int>(p_ - t.start_);
         return t;
     }
 
