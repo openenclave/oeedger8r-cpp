@@ -23,6 +23,12 @@ int main(int argc, char** argv)
 
     const uint32_t flags = 0;
 
+    if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s ENCLAVE_PATH\n", argv[0]);
+        return 1;
+    }
+
     OE_TEST(
         oe_create_basic_enclave(
             argv[1], OE_ENCLAVE_TYPE_SGX, flags, NULL, 0, &enclave) == OE_OK);
