@@ -17,7 +17,7 @@ int host_hello(const char* msg, int* out_val)
     return 0;
 }
 
-int main()
+int main(int argc, char** argv)
 {
     oe_enclave_t* enclave = NULL;
 
@@ -25,7 +25,7 @@ int main()
 
     OE_TEST(
         oe_create_basic_enclave(
-            "basic", OE_ENCLAVE_TYPE_SGX, flags, NULL, 0, &enclave) == OE_OK);
+            argv[1], OE_ENCLAVE_TYPE_SGX, flags, NULL, 0, &enclave) == OE_OK);
 
     int ret_val = -1;
     int out_val = 0;

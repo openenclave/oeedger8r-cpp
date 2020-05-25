@@ -3,11 +3,13 @@
 
 #include "../edltestutils.h"
 
-#include <openenclave/corelibc/stdio.h>
-#include <openenclave/corelibc/string.h>
+#include <stdio.h>
+#include <string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/tests.h>
 #include "all_t.h"
+
+#define oe_strcmp strcmp
 
 static uint64_t data[8] = {0x1112131415161718,
                            0x2122232425262728,

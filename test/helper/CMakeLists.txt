@@ -1,14 +1,13 @@
-# Copyright (c) Open Enclave SDK contributors.
-# Licensed under the MIT License.
+# Copyright (c) Open Enclave SDK contributors. Licensed under the MIT License.
 
-if (USING_OEEDGER8R_CPP_AS_SUBMODULE)
+if(USING_OEEDGER8R_CPP_AS_SUBMODULE)
 
   set(INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/../../include
                    ${CMAKE_BINARY_DIR}/output/include)
 
   set(HEADERS "")
 
-else ()
+else()
 
   set(HEADERS
       openenclave/bits/defs.h
@@ -35,22 +34,22 @@ else ()
       openenclave/host_verify.h
       openenclave/internal/tests.h)
 
-  foreach (header ${HEADERS})
+  foreach(header ${HEADERS})
     set(file
         https://raw.githubusercontent.com/openenclave/openenclave/master/include/${header}
     )
     message("Downloading ${file}")
     file(DOWNLOAD ${file} ${CMAKE_CURRENT_BINARY_DIR}/${header})
-  endforeach ()
+  endforeach()
 
   set(EDL edl/asym_keys.edl)
 
-  foreach (edl ${EDL})
+  foreach(edl ${EDL})
     set(file
         https://raw.githubusercontent.com/openenclave/openenclave/master/${edl})
     message("Downloading ${file}")
     file(DOWNLOAD ${file} ${CMAKE_CURRENT_BINARY_DIR}/${edl})
-  endforeach ()
+  endforeach()
 
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openenclave/bits/asym_keys.h
@@ -66,13 +65,13 @@ else ()
 
   list(APPEND HEADERS openenclave/bits/asym_keys.h)
 
-endif ()
+endif()
 
-if (WIN32)
+if(WIN32)
   set(COMPILE_FLAGS "")
-else ()
+else()
   set(COMPILE_FLAGS -fvisibility=hidden -fPIC)
-endif ()
+endif()
 
 add_library(oeedger8r_test_enclave STATIC enclave.cpp ${HEADERS})
 
@@ -85,3 +84,7 @@ add_library(oeedger8r_test_host STATIC host.cpp ${HEADERS})
 target_include_directories(oeedger8r_test_host PUBLIC ${INCLUDE_DIRS})
 
 target_compile_options(oeedger8r_test_host PUBLIC ${COMPILE_FLAGS})
+
+if(UNIX)
+  target_link_libraries(oeedger8r_test_host PUBLIC dl)
+endif()

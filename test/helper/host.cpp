@@ -87,12 +87,19 @@ oe_result_t oe_create_enclave(
     OE_UNUSED(setting_count);
 
     oe_enclave_t* enc = new _oe_enclave(ocall_table, num_ocalls);
-#if _WIN32    
-    HMODULE h = LoadLibraryExA(path, NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
-    *(void**)&enc->_set_enclave = GetProcAddress(h, "set_enclave_object");
+    std::string path_with_ext = path;
+#if _WIN32
+    path_with_ext += ".dll";
+    HMODULE h = LoadLibraryExA(path_with_ext.c_str(), NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+    *(void**)&enc->_set_enclave = GetProcAddress(h, "set_enclave_object");	
 #else
+    path_with_ext += ".so";
+    void* h = dlopen(path_with_ext.c_str(), RTLD_NOW|RTLD_LOCAL);
+    *(void**)&enc->_set_enclave = dlsym(h, "set_enclave_object");	
 #endif
     
+    enc->_lib_handle = h;
+    *enclave = enc;
     
     return OE_OK;
 }

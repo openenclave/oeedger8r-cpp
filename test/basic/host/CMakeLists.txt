@@ -1,5 +1,4 @@
-# Copyright (c) Open Enclave SDK contributors.
-# Licensed under the MIT License.
+# Copyright (c) Open Enclave SDK contributors. Licensed under the MIT License.
 
 add_custom_command(
   OUTPUT basic_args.h basic_u.h basic_u.c

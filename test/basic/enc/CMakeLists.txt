@@ -11,3 +11,5 @@ target_include_directories(oeedger8r_basic_enc
                            PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(oeedger8r_basic_enc oeedger8r_test_enclave)
+
+set_target_properties(oeedger8r_basic_enc PROPERTIES PREFIX "")

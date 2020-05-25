@@ -4,6 +4,9 @@
 cmake_minimum_required(VERSION 3.0)
 project(oeedger8r)
 
+# Enable testing for the project
+enable_testing()
+
 add_executable(oeedger8r main.cpp parser.cpp lexer.cpp)
 set_property(TARGET oeedger8r PROPERTY POSITION_INDEPENDENT_CODE on)
 
