@@ -101,13 +101,14 @@ bool Parser::print_loc(const char* msg_kind)
     return true;
 }
 
-#define ERROR(fmt, ...) \
-do { \
-    print_loc("error"); \
-    printf(fmt, ##__VA_ARGS__); \
-    printf("\n"); \
-    exit(1);		      \
-} while (0)
+#define ERROR(fmt, ...)             \
+    do                              \
+    {                               \
+        print_loc("error");         \
+        printf(fmt, ##__VA_ARGS__); \
+        printf("\n");               \
+        exit(1);                    \
+    } while (0)
 
 void Parser::expect(const char* str)
 {
@@ -177,7 +178,7 @@ void Parser::parse_include()
 {
     Token t = next();
     if (!t.starts_with("\""))
-	ERROR("expecting header filename");
+        ERROR("expecting header filename");
 
     includes_.push_back(t);
 }
@@ -186,9 +187,9 @@ Edl* Parser::parse_import_file()
 {
     Token t = next();
     if (!t.starts_with("\""))
-	ERROR("expecting edl filename");
+        ERROR("expecting edl filename");
 
-    Parser p (std::string(t.start_+1, t.end_-1), searchpaths_);
+    Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_);
     Edl* edl = p.parse();
     return edl;
 }
@@ -261,28 +262,30 @@ void Parser::parse_enum()
 {
     std::string enum_name = "";
     if (peek().is_name())
-	enum_name = next();
+        enum_name = next();
 
-    UserType* type = new UserType { enum_name, Enum, {}, {} };
+    UserType* type = new UserType{enum_name, Enum, {}, {}};
     expect("{");
     while (peek() != '}')
     {
-	Token name = next();
-	if (!name.is_name())
-	    ERROR("expecting identifier, got %s",
-		  static_cast<std::string>(name).c_str());
-	Token* value = nullptr;
-	if (peek() == '=')
-	{
-	    next();
-	    value = new Token(next());
-	    if (!value->is_name() && !value->is_int())
-		ERROR("expecting enum value, got %s",
-		      static_cast<std::string>(*value).c_str());
-	}
-	if (peek() != '}')
-	    expect(",");
-	type->items_.push_back(EnumVal{name, value});
+        Token name = next();
+        if (!name.is_name())
+            ERROR(
+                "expecting identifier, got %s",
+                static_cast<std::string>(name).c_str());
+        Token* value = nullptr;
+        if (peek() == '=')
+        {
+            next();
+            value = new Token(next());
+            if (!value->is_name() && !value->is_int())
+                ERROR(
+                    "expecting enum value, got %s",
+                    static_cast<std::string>(*value).c_str());
+        }
+        if (peek() != '}')
+            expect(",");
+        type->items_.push_back(EnumVal{name, value});
     }
     types_.push_back(type);
     expect("}");
@@ -424,13 +427,14 @@ Function* Parser::parse_function_decl(bool trusted)
 
 Decl* Parser::parse_decl(bool fcn)
 {
-    Decl* decl = new Decl { {}, {}, {}, nullptr };
+    Decl* decl = new Decl{{}, {}, {}, nullptr};
     decl->attrs_ = parse_attributes(fcn);
     decl->type_ = parse_atype();
     Token name = next();
     if (!name.is_name())
-	ERROR("expecting identifier got %s",
-	      static_cast<std::string>(name).c_str());
+        ERROR(
+            "expecting identifier got %s",
+            static_cast<std::string>(name).c_str());
     decl->name_ = name;
     decl->dims_ = parse_dims();
     return decl;
@@ -512,26 +516,26 @@ Type* Parser::parse_atype()
     bool const_ = false;
     if (t == "const")
     {
-	const_ = true;
-	t = next();
+        const_ = true;
+        t = next();
     }
 
     Type* type = parse_atype1(t);
     if (!type)
-	type = parse_atype2(t);
+        type = parse_atype2(t);
     if (!type)
-	ERROR("expecting typename, got %s",
-	      static_cast<std::string>(t).c_str());
+        ERROR(
+            "expecting typename, got %s", static_cast<std::string>(t).c_str());
 
     if (const_)
-	type = new Type { Const, type, {} };
+        type = new Type{Const, type, {}};
 
     while (peek() == '*')
     {
-	next();
-	type = new Type { Ptr, type, {}};
+        next();
+        type = new Type{Ptr, type, {}};
     }
-    
+
     return type;
 }
 
@@ -541,12 +545,12 @@ Type* Parser::parse_atype1(Token t)
     bool unsigned_ = false;
     if (t == "unsigned")
     {
-	unsigned_ = true;
-	Token p = peek();
-	if (p == "char" || p == "short" || p == "int" || p == "long")
-	    t = next();
-	else
-	    return new Type { Unsigned, new Type { Int, nullptr, {}}, {}};
+        unsigned_ = true;
+        Token p = peek();
+        if (p == "char" || p == "short" || p == "int" || p == "long")
+            t = next();
+        else
+            return new Type{Unsigned, new Type{Int, nullptr, {}}, {}};
     }
 
     if (t == "long")
@@ -567,38 +571,44 @@ Type* Parser::parse_atype1(Token t)
     }
     else if (t == "short" || t == "char")
     {
-	type = new Type { (t== "short") ? Short : Char, nullptr, {}};
-	if (peek() == "int")
-	    next();
+        type = new Type{(t == "short") ? Short : Char, nullptr, {}};
+        if (peek() == "int")
+            next();
     }
     else if (t == "int")
-	type = new Type { Int, nullptr, {} };
+        type = new Type{Int, nullptr, {}};
 
     if (unsigned_)
-	type = new Type { Unsigned, type, {} };
+        type = new Type{Unsigned, type, {}};
 
     return type;
 }
 
-#define MATCH(str, tag) \
-    if (t == str) \
-	return new Type { tag, nullptr, {} }
+#define MATCH(str, tag)   \
+    if (t == str)         \
+        return new Type   \
+        {                 \
+            tag, nullptr, \
+            {             \
+            }             \
+        }
 
 Type* Parser::parse_atype2(Token t)
 {
     if (t == "struct" || t == "enum" || t == "union")
     {
-	Token name = next();
-	if (!name.is_name())
-	    ERROR("expecting struct/enum/union name, got %s",
-		  static_cast<std::string>(name).c_str());
+        Token name = next();
+        if (!name.is_name())
+            ERROR(
+                "expecting struct/enum/union name, got %s",
+                static_cast<std::string>(name).c_str());
 
-	AType at = Struct;
-	if (t == "enum")
-	    at = Enum;
-	else if (t == "union")
-	    at = Union;
-	return new Type { at, nullptr, name }; 
+        AType at = Struct;
+        if (t == "enum")
+            at = Enum;
+        else if (t == "union")
+            at = Union;
+        return new Type{at, nullptr, name};
     }
 
     MATCH("bool", Bool);
@@ -608,15 +618,15 @@ Type* Parser::parse_atype2(Token t)
     MATCH("int8_t", Int8);
     MATCH("int16_t", Int16);
     MATCH("int32_t", Int32);
-    MATCH("int64_t", Int64);    
+    MATCH("int64_t", Int64);
     MATCH("uint8_t", UInt8);
     MATCH("uint16_t", UInt16);
     MATCH("uint32_t", UInt32);
-    MATCH("uint64_t", UInt64);    
+    MATCH("uint64_t", UInt64);
 
     if (t.is_name())
-	return new Type{Foreign, {}, t};
-    
+        return new Type{Foreign, {}, t};
+
     return nullptr;
 }
 

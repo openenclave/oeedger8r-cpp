@@ -3,10 +3,10 @@
 
 #include "../edltestutils.h"
 
-#include <stdio.h>
-#include <string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/tests.h>
+#include <stdio.h>
+#include <string.h>
 #include "all_t.h"
 
 #define oe_strcmp strcmp
