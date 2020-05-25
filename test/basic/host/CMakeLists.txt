@@ -9,5 +9,4 @@ add_executable(oeedger8r_basic_host basic_u.c host.cpp)
 target_include_directories(oeedger8r_basic_host
                            PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(oeedger8r_basic_host oeedger8r_basic_enc
-                      oeedger8r_test_host)
+target_link_libraries(oeedger8r_basic_host oeedger8r_test_host)

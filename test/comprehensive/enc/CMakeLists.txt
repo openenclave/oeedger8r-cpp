@@ -48,21 +48,21 @@ add_library(
 target_link_libraries(oeedger8r_comprehensive_enc oeedger8r_test_enclave)
 
 # The tests intentionally use floats etc in size context. Disable warnings.
-if(CMAKE_CXX_COMPILER_ID MATCHES GNU OR CMAKE_CXX_COMPILER_ID MATCHES Clang)
+if (CMAKE_CXX_COMPILER_ID MATCHES GNU OR CMAKE_CXX_COMPILER_ID MATCHES Clang)
   set_source_files_properties(all_t.c PROPERTIES COMPILE_FLAGS
                                                  "-Wno-conversion")
   set_source_files_properties(testpointer.cpp teststring.cpp
                               PROPERTIES COMPILE_FLAGS "-Wno-unused-parameter")
-endif()
+endif ()
 
 target_include_directories(
   oeedger8r_comprehensive_enc PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                       ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-if(NOT WIN32)
+if (NOT WIN32)
   # Re-enable strict aliasing. TODO: Remove this when #1717 is resolved.
   target_compile_options(oeedger8r_comprehensive_enc
                          PUBLIC -fstrict-aliasing -Werror=strict-aliasing)
-endif()
+endif ()
 
 set_target_properties(oeedger8r_comprehensive_enc PROPERTIES PREFIX "")

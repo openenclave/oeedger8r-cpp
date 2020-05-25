@@ -67,11 +67,11 @@ else()
 
 endif()
 
-if(WIN32)
+if (WIN32)
   set(COMPILE_FLAGS "")
-else()
+else ()
   set(COMPILE_FLAGS -fvisibility=hidden -fPIC)
-endif()
+endif ()
 
 add_library(oeedger8r_test_enclave STATIC enclave.cpp ${HEADERS})
 
@@ -85,6 +85,6 @@ target_include_directories(oeedger8r_test_host PUBLIC ${INCLUDE_DIRS})
 
 target_compile_options(oeedger8r_test_host PUBLIC ${COMPILE_FLAGS})
 
-if(UNIX)
-  target_link_libraries(oeedger8r_test_host PUBLIC dl)
-endif()
+if (UNIX)
+  target_link_libraries(oeedger8r_test_host PUBLIC -ldl)
+endif ()

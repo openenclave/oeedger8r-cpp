@@ -46,22 +46,21 @@ add_executable(
   testswitchless.cpp)
 
 # The tests intentionally use floats etc in size context. Disable warnings.
-if(CMAKE_CXX_COMPILER_ID MATCHES GNU OR CMAKE_CXX_COMPILER_ID MATCHES Clang)
+if (CMAKE_CXX_COMPILER_ID MATCHES GNU OR CMAKE_CXX_COMPILER_ID MATCHES Clang)
   set_source_files_properties(all_u.c PROPERTIES COMPILE_FLAGS
                                                  "-Wno-conversion")
   set_source_files_properties(testpointer.cpp teststring.cpp
                               PROPERTIES COMPILE_FLAGS "-Wno-unused-parameter")
-endif()
+endif ()
 
 target_include_directories(
   oeedger8r_comprehensive_host PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
                                       ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-if(NOT WIN32)
+if (NOT WIN32)
   # Re-enable strict aliasing. TODO: Remove this when #1717 is resolved.
   target_compile_options(oeedger8r_comprehensive_host
                          PUBLIC -fstrict-aliasing -Werror=strict-aliasing)
-endif()
+endif ()
 
-target_link_libraries(oeedger8r_comprehensive_host oeedger8r_comprehensive_enc
-                      oeedger8r_test_host)
+target_link_libraries(oeedger8r_comprehensive_host oeedger8r_test_host)
