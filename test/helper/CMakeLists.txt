@@ -1,6 +1,6 @@
 # Copyright (c) Open Enclave SDK contributors. Licensed under the MIT License.
 
-if(USING_OEEDGER8R_CPP_AS_SUBMODULE)
+if(USE_OEEDGER8R_CPP_AS_SUBMODULE)
 
   set(INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/../../include
                    ${CMAKE_BINARY_DIR}/output/include)
