@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <algorithm>
+#include <cstddef>
 
 #include "parser.h"
 #include "utils.h"
