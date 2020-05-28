@@ -30,13 +30,13 @@ class ArgsHEmitter
     }
 
   public:
-    ArgsHEmitter(Edl* edl) : edl_(edl)
+    ArgsHEmitter(Edl* edl) : edl_(edl), file_()
     {
-        file_.open(edl_->name_ + "_args.h");
     }
 
-    void emit()
+    void emit(const std::string& dir_with_sep = "")
     {
+        file_.open(dir_with_sep + edl_->name_ + "_args.h");
         std::string guard = "EDGER8R_" + upper(edl_->name_) + "_ARGS_H";
         header(out(), guard);
         out() << ""

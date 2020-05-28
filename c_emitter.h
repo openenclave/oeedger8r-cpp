@@ -44,10 +44,10 @@ class CEmitter
     {
     }
 
-    void emit_t_c()
+    void emit_t_c(const std::string& dir_with_sep = "")
     {
         gen_t_c_ = true;
-        file_.open(edl_->name_ + "_t.c");
+        file_.open(dir_with_sep + edl_->name_ + "_t.c");
         autogen_preamble(out());
         out() << "#include \"" + edl_->name_ + "_t.h\""
               << ""
@@ -73,10 +73,10 @@ class CEmitter
         file_.close();
     }
 
-    void emit_u_c()
+    void emit_u_c(const std::string& dir_with_sep = "")
     {
         gen_t_c_ = false;
-        file_.open(edl_->name_ + "_u.c");
+        file_.open(dir_with_sep + edl_->name_ + "_u.c");
         autogen_preamble(out());
         out() << "#include \"" + edl_->name_ + "_u.h\""
               << ""

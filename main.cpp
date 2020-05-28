@@ -1,6 +1,7 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -8,6 +9,20 @@
 #include "c_emitter.h"
 #include "h_emitter.h"
 #include "parser.h"
+
+static void _ensure_directory(const std::string& dir)
+{
+#if _WIN32
+    std::string::size_type pos = 0;
+    do
+    {
+        pos = path.find_first_of("\\/", pos + 1);
+        system(("md " + path.substr(0, pos)).c_str());
+    } while (pos != std::string::npos);
+#else
+    system(("mkdir -p " + dir).c_str());
+#endif
+}
 
 const char* usage =
     "usage: oeedger8r [options] <file> ...\n"
@@ -31,8 +46,8 @@ int main(int argc, char** argv)
     bool header_only = false;
     bool gen_untrusted = false;
     bool gen_trusted = false;
-    std::string untrusted_dir;
-    std::string trusted_dir;
+    std::string untrusted_dir = "";
+    std::string trusted_dir = "";
     std::vector<std::string> files;
     int i = 1;
 
@@ -92,24 +107,37 @@ int main(int argc, char** argv)
     if (!gen_trusted && !gen_untrusted)
         gen_trusted = gen_untrusted = true;
 
+    // Add separators. / works on both Linux and Windows.
+    if (trusted_dir != "")
+    {
+        _ensure_directory(trusted_dir);
+        trusted_dir += "/";
+    }
+    if (untrusted_dir != "")
+    {
+        _ensure_directory(untrusted_dir);
+        untrusted_dir += "/";
+    }
+
     for (std::string& file : files)
     {
         Parser p(file, searchpaths);
         Edl* edl = p.parse();
 
-        ArgsHEmitter(edl).emit();
-
         if (gen_trusted)
         {
-            HEmitter(edl).emit_t_h();
+            ArgsHEmitter(edl).emit(trusted_dir);
+            HEmitter(edl).emit_t_h(trusted_dir);
             if (!header_only)
-                CEmitter(edl).emit_t_c();
+                CEmitter(edl).emit_t_c(trusted_dir);
         }
         if (gen_untrusted)
         {
-            HEmitter(edl).emit_u_h();
+            if (untrusted_dir != trusted_dir)
+                ArgsHEmitter(edl).emit(untrusted_dir);
+            HEmitter(edl).emit_u_h(untrusted_dir);
             if (!header_only)
-                CEmitter(edl).emit_u_c();
+                CEmitter(edl).emit_u_c(untrusted_dir);
         }
     }
 

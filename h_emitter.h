@@ -40,19 +40,19 @@ class HEmitter
     {
     }
 
-    void emit_t_h()
+    void emit_t_h(const std::string& dir_with_sep = "")
     {
         gen_t_h_ = true;
-        file_.open(edl_->name_ + "_t.h");
+        file_.open(dir_with_sep + edl_->name_ + "_t.h");
         indent_ = "";
         emit_h();
         file_.close();
     }
 
-    void emit_u_h()
+    void emit_u_h(const std::string& dir_with_sep = "")
     {
         gen_t_h_ = false;
-        file_.open(edl_->name_ + "_u.h");
+        file_.open(dir_with_sep + edl_->name_ + "_u.h");
         emit_h();
         file_.close();
     }
