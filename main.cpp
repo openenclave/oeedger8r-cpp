@@ -42,11 +42,21 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    while (i < argc - 1)
+    auto get_dir = [argc, argv](int i) {
+        if (i == argc)
+        {
+            printf("error: missing directory name after %s\n", argv[i - 1]);
+            printf("%s\n", usage);
+            exit(1);
+        }
+        return argv[i];
+    };
+
+    while (i < argc)
     {
-        std::string a = argv[i];
+        std::string a = argv[i++];
         if (a == "--search-path")
-            searchpaths.push_back(argv[++i]);
+            searchpaths.push_back(get_dir(i++));
         else if (a == "--use-prefix")
             continue;
         else if (a == "--header-only")
@@ -56,7 +66,9 @@ int main(int argc, char** argv)
         else if (a == "--trusted")
             gen_trusted = true;
         else if (a == "--trusted-dir")
-            untrusted_dir = argv[++i];
+            trusted_dir = get_dir(i++);
+        else if (a == "--untrusted-dir")
+            untrusted_dir = get_dir(i++);
         else if (a == "--experimental")
             ;
         else if (a == "--help")
@@ -66,10 +78,7 @@ int main(int argc, char** argv)
         }
         else
             files.push_back(a);
-        ++i;
     }
-    if (i < argc)
-        files.push_back(argv[i]);
 
     if (files.empty())
     {
