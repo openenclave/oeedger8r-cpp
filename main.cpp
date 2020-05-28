@@ -10,14 +10,18 @@
 #include "h_emitter.h"
 #include "parser.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 static void _ensure_directory(const std::string& dir)
 {
 #if _WIN32
     std::string::size_type pos = 0;
     do
     {
-        pos = path.find_first_of("\\/", pos + 1);
-        system(("md " + path.substr(0, pos)).c_str());
+        pos = dir.find_first_of("\\/", pos + 1);
+        CreateDirectoryA(dir.substr(0, pos).c_str(), NULL);
     } while (pos != std::string::npos);
 #else
     system(("mkdir -p " + dir).c_str());
@@ -46,8 +50,8 @@ int main(int argc, char** argv)
     bool header_only = false;
     bool gen_untrusted = false;
     bool gen_trusted = false;
-    std::string untrusted_dir = "";
-    std::string trusted_dir = "";
+    std::string untrusted_dir = ".";
+    std::string trusted_dir = ".";
     std::vector<std::string> files;
     int i = 1;
 
@@ -108,16 +112,14 @@ int main(int argc, char** argv)
         gen_trusted = gen_untrusted = true;
 
     // Add separators. / works on both Linux and Windows.
-    if (trusted_dir != "")
-    {
+    if (trusted_dir != ".")
         _ensure_directory(trusted_dir);
-        trusted_dir += "/";
-    }
-    if (untrusted_dir != "")
-    {
+    trusted_dir += "/";
+    
+    if (untrusted_dir != ".")
         _ensure_directory(untrusted_dir);
-        untrusted_dir += "/";
-    }
+    untrusted_dir += "/";
+    
 
     for (std::string& file : files)
     {

@@ -55,7 +55,10 @@ Parser::Parser(
         exit(1);
     }
 
-    size_t p = f.rfind('/');
+    // Search for the right most / or \.
+    size_t p1 = f.rfind('/');
+    size_t p2 = f.rfind('\\');
+    size_t p = (p1 != std::string::npos && p1 > p2) ? p1 : p2;
     if (p != std::string::npos)
         basename_ =
             std::string(f.begin() + static_cast<ptrdiff_t>(p) + 1, f.end());
