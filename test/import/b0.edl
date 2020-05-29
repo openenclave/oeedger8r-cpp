@@ -1,0 +1,16 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  // Import specific items.
+  from "a1_nest.edl" import a_ecall1, a_ocall1;
+
+  // Define items with same name as unimported items in a.edl.
+  trusted {
+    public void a_ecall2(void);
+  };
+
+  untrusted {
+    void a_ocall2(void);
+  };
+};

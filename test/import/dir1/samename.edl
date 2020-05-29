@@ -1,0 +1,15 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave
+{
+   trusted
+   {
+      public int sample_ecall0();
+   };
+
+   untrusted
+   {
+      int sample_ocall0();
+   };
+};

@@ -1,0 +1,7 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  from "a2.edl" import *;
+};
+

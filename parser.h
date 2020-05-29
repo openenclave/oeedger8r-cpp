@@ -4,6 +4,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,7 @@
 class Parser
 {
     static std::vector<std::string> stack_;
+    static std::map<std::string, Edl*> cache_;
 
     std::string filename_;
     std::string basename_;
@@ -57,6 +59,9 @@ class Parser
     Dims* parse_dims();
 
   private:
+    void append_include(const std::string& inc);
+    void append_type(UserType* type);
+    void append_function(std::vector<Function*>& funcs, Function* f);
     void warn_allow_list(const std::string& fname);
     void warn_non_portable(Function* f);
     void error_size_count(Function* f);
