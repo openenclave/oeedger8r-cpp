@@ -139,8 +139,7 @@ int main(int argc, char** argv)
         }
         if (gen_untrusted)
         {
-            if (untrusted_dir != trusted_dir)
-                ArgsHEmitter(edl).emit(untrusted_dir);
+            ArgsHEmitter(edl).emit(untrusted_dir);
             HEmitter(edl).emit_u_h(untrusted_dir);
             if (!header_only)
                 CEmitter(edl).emit_u_c(untrusted_dir);
