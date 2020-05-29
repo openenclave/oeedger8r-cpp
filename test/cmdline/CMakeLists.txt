@@ -30,8 +30,8 @@ add_cmdline_test(
   "error: missing directory name after --search-path" "")
 
 # Check whether --trusted-dir and --untrusted-dir works.
-set(TRUSTED_DIR "trusted-dir/foo/../bar/x")
-set(UNTRUSTED_DIR "untrusted-dir/foo/../bar/y")
+set(TRUSTED_DIR "${CMAKE_CURRENT_BINARY_DIR}/trusted-dir/foo/../bar/x")
+set(UNTRUSTED_DIR "${CMAKE_CURRENT_BINARY_DIR}/untrusted-dir/foo/../bar/y")
 set(EDL ${CMAKE_CURRENT_SOURCE_DIR}/../basic/basic.edl)
 add_custom_command(
   OUTPUT ${TRUSTED_DIR}/basic_t.c ${UNTRUSTED_DIR}/basic_u.c

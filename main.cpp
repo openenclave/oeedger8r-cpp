@@ -14,21 +14,20 @@
 #include <windows.h>
 #endif
 
-static void _ensure_directory(const std::string& dir)
-{
+static void _ensure_directory(const std::string &dir) {
 #if _WIN32
-    std::string::size_type pos = 0;
-    do
-    {
-        pos = dir.find_first_of("\\/", pos + 1);
-        CreateDirectoryA(dir.substr(0, pos).c_str(), NULL);
-    } while (pos != std::string::npos);
+  std::string::size_type pos = 0;
+  do {
+    pos = dir.find_first_of("\\/", pos + 1);
+    std::string subdir = dir.substr(0, pos);
+    CreateDirectoryA(subdir.c_str(), NULL);
+  } while (pos != std::string::npos);
 #else
-    system(("mkdir -p " + dir).c_str());
+  system(("mkdir -p " + dir).c_str());
 #endif
 }
 
-const char* usage =
+const char *usage =
     "usage: oeedger8r [options] <file> ...\n"
     "\n"
     "[options]\n"
@@ -44,104 +43,97 @@ const char* usage =
     "\n"
     "If neither `--untrusted' nor `--trusted' is specified, generate both.\n";
 
-int main(int argc, char** argv)
-{
-    std::vector<std::string> searchpaths;
-    bool header_only = false;
-    bool gen_untrusted = false;
-    bool gen_trusted = false;
-    std::string untrusted_dir = ".";
-    std::string trusted_dir = ".";
-    std::vector<std::string> files;
-    int i = 1;
+int main(int argc, char **argv) {
+  std::vector<std::string> searchpaths;
+  bool header_only = false;
+  bool gen_untrusted = false;
+  bool gen_trusted = false;
+  std::string untrusted_dir = ".";
+  std::string trusted_dir = ".";
+  std::vector<std::string> files;
+  int i = 1;
 
-    if (argc == 1)
-    {
-        printf("%s\n", usage);
-        return 1;
+  if (argc == 1) {
+    printf("%s\n", usage);
+    return 1;
+  }
+
+  auto get_dir = [argc, argv](int i) {
+    if (i == argc) {
+      printf("error: missing directory name after %s\n", argv[i - 1]);
+      printf("%s\n", usage);
+      exit(1);
     }
+    return fix_path_seperators(argv[i]);
+  };
 
-    auto get_dir = [argc, argv](int i) {
-        if (i == argc)
-        {
-            printf("error: missing directory name after %s\n", argv[i - 1]);
-            printf("%s\n", usage);
-            exit(1);
-        }
-        return argv[i];
-    };
+  while (i < argc) {
+    std::string a = argv[i++];
+    if (a == "--search-path")
+      searchpaths.push_back(get_dir(i++));
+    else if (a == "--use-prefix")
+      continue;
+    else if (a == "--header-only")
+      header_only = true;
+    else if (a == "--untrusted")
+      gen_untrusted = true;
+    else if (a == "--trusted")
+      gen_trusted = true;
+    else if (a == "--trusted-dir")
+      trusted_dir = get_dir(i++);
+    else if (a == "--untrusted-dir")
+      untrusted_dir = get_dir(i++);
+    else if (a == "--experimental")
+      ;
+    else if (a == "--help") {
+      printf("%s\n", usage);
+      return 1;
+    } else
+      files.push_back(fix_path_seperators(a));
+  }
 
-    while (i < argc)
-    {
-        std::string a = argv[i++];
-        if (a == "--search-path")
-            searchpaths.push_back(get_dir(i++));
-        else if (a == "--use-prefix")
-            continue;
-        else if (a == "--header-only")
-            header_only = true;
-        else if (a == "--untrusted")
-            gen_untrusted = true;
-        else if (a == "--trusted")
-            gen_trusted = true;
-        else if (a == "--trusted-dir")
-            trusted_dir = get_dir(i++);
-        else if (a == "--untrusted-dir")
-            untrusted_dir = get_dir(i++);
-        else if (a == "--experimental")
-            ;
-        else if (a == "--help")
-        {
-            printf("%s\n", usage);
-            return 1;
-        }
-        else
-            files.push_back(a);
+  if (files.empty()) {
+    printf("error: missing edl filename.\n");
+    printf("%s", usage);
+    return -1;
+  }
+
+  printf("Generating edge routine, for the Open Enclave SDK.\n");
+
+  if (!gen_trusted && !gen_untrusted)
+    gen_trusted = gen_untrusted = true;
+
+  const char *sep = path_sep();
+
+  // Add separators. / works on both Linux and Windows.
+  if (trusted_dir.back() != sep[0])
+    trusted_dir += sep;
+  if (trusted_dir != std::string(".") + sep)
+    _ensure_directory(trusted_dir);
+
+  if (untrusted_dir.back() != sep[0])
+    untrusted_dir += sep;
+  if (untrusted_dir != std::string(".") + sep)
+    _ensure_directory(untrusted_dir);
+
+  for (std::string &file : files) {
+    Parser p(file, searchpaths);
+    Edl *edl = p.parse();
+
+    if (gen_trusted) {
+      ArgsHEmitter(edl).emit(trusted_dir);
+      HEmitter(edl).emit_t_h(trusted_dir);
+      if (!header_only)
+        CEmitter(edl).emit_t_c(trusted_dir);
     }
-
-    if (files.empty())
-    {
-        printf("error: missing edl filename.\n");
-        printf("%s", usage);
-        return -1;
+    if (gen_untrusted) {
+      if (untrusted_dir != trusted_dir)
+        ArgsHEmitter(edl).emit(untrusted_dir);
+      HEmitter(edl).emit_u_h(untrusted_dir);
+      if (!header_only)
+        CEmitter(edl).emit_u_c(untrusted_dir);
     }
+  }
 
-    printf("Generating edge routine, for the Open Enclave SDK.\n");
-
-    if (!gen_trusted && !gen_untrusted)
-        gen_trusted = gen_untrusted = true;
-
-    // Add separators. / works on both Linux and Windows.
-    if (trusted_dir != ".")
-        _ensure_directory(trusted_dir);
-    trusted_dir += "/";
-    
-    if (untrusted_dir != ".")
-        _ensure_directory(untrusted_dir);
-    untrusted_dir += "/";
-    
-
-    for (std::string& file : files)
-    {
-        Parser p(file, searchpaths);
-        Edl* edl = p.parse();
-
-        if (gen_trusted)
-        {
-            ArgsHEmitter(edl).emit(trusted_dir);
-            HEmitter(edl).emit_t_h(trusted_dir);
-            if (!header_only)
-                CEmitter(edl).emit_t_c(trusted_dir);
-        }
-        if (gen_untrusted)
-        {
-            if (untrusted_dir != trusted_dir)
-                ArgsHEmitter(edl).emit(untrusted_dir);
-            HEmitter(edl).emit_u_h(untrusted_dir);
-            if (!header_only)
-                CEmitter(edl).emit_u_c(untrusted_dir);
-        }
-    }
-
-    printf("Success.\n");
+  printf("Success.\n");
 }
