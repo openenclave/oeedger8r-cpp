@@ -7,6 +7,8 @@
 #include "parser.h"
 #include "utils.h"
 
+// This is a change in anakrish fork.
+
 static bool _is_file(const std::string& path)
 {
     FILE* f = fopen(path.c_str(), "r");
