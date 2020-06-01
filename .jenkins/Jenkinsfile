@@ -1,0 +1,81 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+OECI_LIB_VERSION = env.OECI_LIB_VERSION ?: "master"
+oe = library("OpenEnclaveCommon@${OECI_LIB_VERSION}").jenkins.common.Openenclave.new()
+
+GLOBAL_TIMEOUT_MINUTES = 240
+CTEST_TIMEOUT_SECONDS = 480
+GLOBAL_ERROR = null
+
+AGENTS_LABELS = [
+    "acc-ubuntu-16.04": env.UBUNTU_1604_CUSTOM_LABEL ?: "ACC-1604",
+    "acc-ubuntu-18.04": env.UBUNTU_1804_CUSTOM_LABEL ?: "ACC-1804",
+    "acc-rhel-8":       env.RHEL_8_CUSTOM_LABEL ?: "ACC-RHEL-8",
+    "acc-win2016":      env.WINDOWS_2016_CUSTOM_LABEL ?: "SGX-Windows-2016",
+    "acc-win2019":      env.WINDOWS_2019_CUSTOM_LABEL ?: "SGX-Windows-2019"
+]
+
+properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '90',
+                                      artifactNumToKeepStr: '180',
+                                      daysToKeepStr: '90',
+                                      numToKeepStr: '180')),
+            [$class: 'JobRestrictionProperty']])
+
+
+def LinuxBuild(String label, String compiler) {
+    stage("${label} ${compiler} oeedger8r-cpp") {
+        node(label) {
+            timeout(GLOBAL_TIMEOUT_MINUTES) {
+                cleanWs()
+                checkout scm
+                def task = """
+                           cmake ${WORKSPACE}
+                           make -j 4
+                           ctest --output-on-failure --timeout ${CTEST_TIMEOUT_SECONDS}
+                           """
+                
+                oe.Run(compiler, task)
+            }
+        }
+    }
+}
+
+def WindowsBuild(String label) {
+    stage("${label} oeedger8r-cpp") {
+        node(label) {
+            timeout(GLOBAL_TIMEOUT_MINUTES) {
+                cleanWs()
+                checkout scm
+                bat """
+                    vcvars64.bat x64 && \
+                    cmake.exe ${WORKSPACE} -G Ninja && \
+                    ninja -v -j 4 && \
+                    ctest.exe -V --output-on-failure --timeout ${CTEST_TIMEOUT_SECONDS}
+                    """
+            }
+        }
+    }
+}
+
+
+try {
+    stage("PR Testing") {
+        def testing_stages = [
+            "ACC1604 clang-7":          { LinuxBuild(AGENTS_LABELS["acc-ubuntu-16.04"], 'clang-7',) },
+            "ACC1804 clang-7":          { LinuxBuild(AGENTS_LABELS["acc-ubuntu-18.04"], 'clang-7') },
+            "RHEL 8 gcc 8":             { LinuxBuild(AGENTS_LABELS["acc-rhel-8"], 'gcc') },
+            "Win 2016 MSVC":             { WindowsBuild(AGENTS_LABELS["acc-win2016"]) },
+            "Win 2019 MSVC":             { WindowsBuild(AGENTS_LABELS["acc-win2019"]) }
+        ]
+
+        parallel testing_stages
+    }
+
+} catch(Exception e) {
+    println "Caught global pipeline exception :" + e
+    GLOBAL_ERROR = e
+    throw e
+} finally {
+    currentBuild.result = (GLOBAL_ERROR != null) ? 'FAILURE' : "SUCCESS"
+}
