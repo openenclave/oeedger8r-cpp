@@ -12,7 +12,8 @@ AGENTS_LABELS = [
     "acc-ubuntu-16.04": env.UBUNTU_1604_CUSTOM_LABEL ?: "ACC-1604",
     "acc-ubuntu-18.04": env.UBUNTU_1804_CUSTOM_LABEL ?: "ACC-1804",
     "acc-rhel-8":       env.RHEL_8_CUSTOM_LABEL ?: "ACC-RHEL-8",
-    "acc-win2019":      env.WINDOWS_2019_CUSTOM_LABEL ?: "SGX-Windows-2019",
+    "acc-win2016":      env.WINDOWS_2016_CUSTOM_LABEL ?: "SGX-Windows-2016",
+    "acc-win2019":      env.WINDOWS_2019_CUSTOM_LABEL ?: "SGX-Windows-2019"
 ]
 
 properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '90',
@@ -22,7 +23,7 @@ properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '90',
             [$class: 'JobRestrictionProperty']])
 
 
-def Build(String label, String compiler) {
+def LinuxBuild(String label, String compiler) {
     stage("${label} ${compiler} oeedger8r-cpp") {
         node(label) {
             timeout(GLOBAL_TIMEOUT_MINUTES) {
@@ -40,13 +41,32 @@ def Build(String label, String compiler) {
     }
 }
 
+def WindowsBuild(String label) {
+    stage("${label} oeedger8r-cpp") {
+        node(label) {
+            timeout(GLOBAL_TIMEOUT_MINUTES) {
+                cleanWs()
+                checkout scm
+                bat """
+                    vcvars64.bat x64 && \
+                    cmake ${WORKSPACE}
+                    make -j 4
+                    ctest --output-on-failure --timeout ${CTEST_TIMEOUT_SECONDS}
+                    """
+            }
+        }
+    }
+}
+
 
 try {
     stage("PR Testing") {
         def testing_stages = [
-            "ACC1604 clang-7":          { Build(AGENTS_LABELS["acc-ubuntu-16.04"], 'clang-7',) },
-            "ACC1804 clang-7":          { Build(AGENTS_LABELS["acc-ubuntu-18.04"], 'clang-7') },
-            "RHEL 8 gcc 8":            { Build(AGENTS_LABELS["acc-rhel-8"], 'gcc') }
+            "ACC1604 clang-7":          { LinuxBuild(AGENTS_LABELS["acc-ubuntu-16.04"], 'clang-7',) },
+            "ACC1804 clang-7":          { LinuxBuild(AGENTS_LABELS["acc-ubuntu-18.04"], 'clang-7') },
+            "RHEL 8 gcc 8":             { LinuxBuild(AGENTS_LABELS["acc-rhel-8"], 'gcc') },
+            "Win 2016 Clang 7":         { WindowsBuild(AGENTS_LABELS["acc-win2016"]) },
+            "Win 2019 Clang 7":         { WindowsBuild(AGENTS_LABELS["acc-win2019"]) }
         ]
 
         parallel testing_stages
