@@ -5,6 +5,7 @@ add_subdirectory(basic)
 add_subdirectory(behavior)
 add_subdirectory(cmdline)
 add_subdirectory(comprehensive)
+add_subdirectory(preprocessor)
 
 # Virtual Mode execution for tests.
 add_subdirectory(virtual)

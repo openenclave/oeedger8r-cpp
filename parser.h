@@ -18,6 +18,7 @@ class Parser
     std::string filename_;
     std::string basename_;
     std::vector<std::string> searchpaths_;
+    std::vector<std::string> defines_;
 
     Lexer* lex_;
     Token t_;
@@ -74,7 +75,8 @@ class Parser
   public:
     Parser(
         const std::string& filename,
-        const std::vector<std::string>& searchpaths);
+        const std::vector<std::string>& searchpaths,
+        const std::vector<std::string>& defines);
     ~Parser();
 
     Edl* parse();

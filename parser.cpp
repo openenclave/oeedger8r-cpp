@@ -5,6 +5,7 @@
 #include <cstddef>
 
 #include "parser.h"
+#include "preprocessor.h"
 #include "utils.h"
 
 static bool _is_file(const std::string& path)
@@ -22,9 +23,11 @@ std::vector<std::string> Parser::stack_;
 
 Parser::Parser(
     const std::string& filename,
-    const std::vector<std::string>& searchpaths)
+    const std::vector<std::string>& searchpaths,
+    const std::vector<std::string>& defines)
     : filename_(filename),
       basename_(),
+      defines_(defines),
       searchpaths_(searchpaths),
       lex_(),
       t_(),
@@ -67,7 +70,10 @@ Parser::Parser(
     if (p != std::string::npos)
         basename_ = std::string(
             basename_.begin(), basename_.begin() + static_cast<ptrdiff_t>(p));
-    lex_ = new Lexer(f);
+
+    Preprocessor cpp(defines_);
+    std::string processed = cpp.process(f, basename_);
+    lex_ = new Lexer(processed);
 
     t_ = lex_->next();
     t1_ = lex_->next();
@@ -191,7 +197,7 @@ Edl* Parser::parse_import_file()
     if (!t.starts_with("\""))
         ERROR("expecting edl filename");
 
-    Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_);
+    Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_, defines_);
     Edl* edl = p.parse();
     return edl;
 }
