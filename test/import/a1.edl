@@ -1,0 +1,22 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  struct a_struct1 {
+    int x;
+  };
+
+  struct a_struct2 {
+    int x;
+  };
+  
+
+  trusted {
+    public void a_ecall1(void);
+    public void a_ecall2(void);    
+  };
+  untrusted {
+    void a_ocall1(void);
+    void a_ocall2(void);    
+  };
+};

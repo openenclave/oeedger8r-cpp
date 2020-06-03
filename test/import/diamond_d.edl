@@ -1,0 +1,11 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  // Import a1_ecall via  b and c.
+  import "diamond_b.edl"
+  import "diamond_c.edl"
+  
+  // Import a2_ecall directly.
+  from "a1_nest.edl" import a_ecall2;
+};

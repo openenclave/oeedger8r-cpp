@@ -85,3 +85,4 @@ add_behavior_test(
   deepcopy_value.edl
   "error: the structure declaration \"MyStruct\" specifies a deep copy is expected. Referenced by value in function \"deepcopy_value\" detected."
   "")
+
