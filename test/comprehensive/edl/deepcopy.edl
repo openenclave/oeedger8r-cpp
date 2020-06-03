@@ -22,6 +22,18 @@ enclave {
     [count=count] uint64_t* ptr;
   };
 
+  struct SizeStruct {
+    uint64_t count;
+    size_t size;
+    [size=16] uint64_t* ptr;
+  };
+
+  struct CountSizeStruct {
+    uint64_t count;
+    size_t size;
+    [count=2, size=12] uint64_t* ptr;
+  };
+
   struct SizeParamStruct {
     uint64_t count;
     size_t size;
@@ -70,6 +82,8 @@ enclave {
 
     // TODO: We should have a `SizeStruct` to test deep copying where
     // the size attribute is correctly used with a hard-coded value.
+    public void deepcopy_size([in, out, count=1] SizeStruct* s);
+    public void deepcopy_countsize([in, out, count=1] CountSizeStruct* s);
 
     // Deep copy of one `SizeParamStruct` with an embedded array
     // should take place.
