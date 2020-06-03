@@ -1,0 +1,6 @@
+enclave {
+  trusted
+  {
+    public void first_ecall();
+  };
+};
