@@ -69,7 +69,7 @@ int main(int argc, char** argv)
             printf("%s\n", usage);
             exit(1);
         }
-        return fix_path_seperators(argv[i]);
+        return fix_path_separators(argv[i]);
     };
 
     while (i < argc)
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
             return 1;
         }
         else
-            files.push_back(fix_path_seperators(a));
+            files.push_back(fix_path_separators(a));
     }
 
     if (files.empty())
