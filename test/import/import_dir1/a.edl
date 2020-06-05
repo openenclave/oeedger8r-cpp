@@ -1,0 +1,9 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  trusted {
+    // Use wchar_t so that a warning is raised with function name.
+    public void import_dir1_ecall([wstring, in] wchar_t* str);
+  };
+};

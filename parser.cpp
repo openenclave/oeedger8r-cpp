@@ -48,7 +48,7 @@ Parser::Parser(
     {
         for (auto&& sp : searchpaths_)
         {
-            f = sp + path_sep() + filename_;
+            f = fix_path_separators(sp + path_sep() + filename_);
             if (_is_file(f))
                 break;
         }
@@ -77,6 +77,9 @@ Parser::Parser(
 
     t_ = lex_->next();
     t1_ = lex_->next();
+
+    // Remember full path to file.
+    filename_ = f;
 }
 
 Parser::~Parser()
@@ -145,6 +148,7 @@ Edl* Parser::parse()
     if (cache_.count(filename_))
         return cache_[filename_];
 
+    printf("Processing %s.\n", filename_.c_str());
     stack_.push_back(filename_);
     expect("enclave");
     expect("{");

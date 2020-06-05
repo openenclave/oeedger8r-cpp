@@ -327,7 +327,7 @@ inline const char* path_sep()
 #endif
 }
 
-inline std::string fix_path_seperators(const std::string& path)
+inline std::string fix_path_separators(const std::string& path)
 {
 #if _WIN32
     return replace(path, "/", "\\");

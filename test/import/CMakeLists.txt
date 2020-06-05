@@ -71,3 +71,39 @@ add_import_test(oeedger8r_import_diamond diamond_d.edl "Success." "Duplicate")
 # Importing an edl with same basename is allowed.
 add_import_test(oeedger8r_import_same_basename samename.edl "Success."
                 "Recursive")
+
+# Ensure that a.edl is picked up from first search-path. Warning will be raised
+# for function import_dir1_ecall.
+add_test(
+  NAME oeedger8r_import_search_path_order1
+  COMMAND oeedger8r a.edl --search-path ${CMAKE_CURRENT_SOURCE_DIR}/import_dir1
+          --search-path ${CMAKE_CURRENT_SOURCE_DIR}/import_dir2)
+set_tests_properties(
+  oeedger8r_import_search_path_order1
+  PROPERTIES PASS_REGULAR_EXPRESSION "Warning: Function 'import_dir1_ecall'")
+
+# Ensure that a.edl is picked up from first search-path. Warning will be raised
+# for function import_dir2_ecall.
+add_test(
+  NAME oeedger8r_import_search_path_order2
+  COMMAND oeedger8r a.edl --search-path ${CMAKE_CURRENT_SOURCE_DIR}/import_dir2
+          --search-path ${CMAKE_CURRENT_SOURCE_DIR}/import_dir1)
+set_tests_properties(
+  oeedger8r_import_search_path_order2
+  PROPERTIES PASS_REGULAR_EXPRESSION "Warning: Function 'import_dir2_ecall'")
+
+# Lockdown printing of imported file being processed.
+add_test(
+  NAME oeedger8r_import_print_processing
+  COMMAND oeedger8r processing.edl --search-path ${CMAKE_CURRENT_SOURCE_DIR}
+          --search-path ${CMAKE_CURRENT_SOURCE_DIR}/import_dir3/x)
+
+file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/import_dir3/x/y/z.edl"
+     IMPORTED_FILE_PATH)
+# \ character becomes \\\\ in a regular expression.
+# Convert \ to \\ in IMPORTED_FILE_PATH.
+string(REGEX REPLACE "\\\\" "\\\\\\\\" IMPORTED_FILE_PATH ${IMPORTED_FILE_PATH})
+
+set_tests_properties(
+  oeedger8r_import_print_processing
+  PROPERTIES PASS_REGULAR_EXPRESSION "Processing ${IMPORTED_FILE_PATH}.")
