@@ -1,0 +1,65 @@
+#!/bin/sh
+
+# Copyright (c) Open Enclave SDK contributors.
+# Licensed under the MIT License.
+
+DIR=$1
+
+# Delete existing coverage data
+echo "Deleting previous coverage information..."
+find "$DIR" -type f -name '*.gcda' -delete
+
+# Create zero coverage data
+echo "Generating coverage baseline..."
+lcov -d "$DIR" -c -i -o "$DIR/oeedger8r_base.info" \
+     --rc lcov_branch_coverage=1 \
+     --rc geninfo_auto_base=1
+
+# Delete generated C and h files so that edger8r will be run again.
+echo "Deleting generated .h and .c files..."
+find "$DIR" -type f -name '*.h' -delete
+find "$DIR" -type f -name '*.c' -delete
+
+# Build the project
+echo "Building project..."
+cmake --build . -j 4
+
+# Run tests
+echo "Running tests..."
+ctest
+
+# Capture coverage data.
+echo "Generating coverage info..."
+lcov -d "$DIR" -c -o "$DIR/oeedger8r_test.info" \
+     --rc lcov_branch_coverage=1 \
+     --rc geninfo_auto_base=1
+
+
+# Combine traces
+echo "Combining coverage info..."
+lcov --add-tracefile "$DIR/oeedger8r_base.info" \
+     --add-tracefile "$DIR/oeedger8r_test.info" \
+     -o "$DIR/oeedger8r_total.info"
+
+# Remove unwanted items
+echo "Filtering coverage info..."
+lcov --remove "$DIR/oeedger8r_total.info" \
+     '/usr/include/*' \
+     '/usr/lib/*' \
+     -o "$DIR/oeedger8r_total_filtered.info"
+
+# Generate HTML report
+echo "Generating html report..."
+mkdir -p "$DIR/html"
+
+genhtml --ignore-errors source \
+	--legend --title "oeedger8r code coverage report" \
+	--output-directory="$DIR/html" \
+	"$DIR/oeedger8r_total_filtered.info"
+
+
+# Generate cobertura xml
+echo "Generating cobertura xml..."
+python3 -m lcov_cobertura \
+	"$DIR/oeedger8r_total_filtered.info" \
+	-o "$DIR/coverage.xml"

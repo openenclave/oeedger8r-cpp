@@ -115,3 +115,60 @@ Test project oeedger8r-cpp/build
 
 Total Test time (real) =   0.10 sec
 ```
+
+# Code Coverage
+
+Code Coverage is supported only when building with GCC.
+Additionally code coverage requires `lcov`, and python `lcov_cobertura` package.
+```bash
+sudo apt install lcov
+pip3 install lcov_cobertura
+```
+
+To obtain code coverage, configure cmake by passing `-DCODE_COVERAGE=on` to cmake.
+```bash
+cd build
+cmake .. -DCODE_COVERAGE=on
+```
+
+The output would show that oeedger8r will be built for code coverage.
+```bash
+Building for code coverage.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/anakrish/work/oeedger8r-cpp/build
+```
+
+To obtain code coverage, run `make code_coverage`.
+That will build oeedger8r, run tests and generate code-coverage report as html, as well as cobertura xml.
+
+```bash
+Writing data to ./oeedger8r_total_filtered.info
+Summary coverage rate:
+  lines......: 74.0% (1303 of 1762 lines)
+  functions..: 88.3% (218 of 247 functions)
+  branches...: no data found
+Generating html report...
+Reading data file ./oeedger8r_total_filtered.info
+Found 11 entries.
+Found common filename prefix "/home/anakrish/work"
+Writing .css and .png files.
+Generating output.
+Processing file oeedger8r-cpp/lexer.h
+Processing file oeedger8r-cpp/lexer.cpp
+Processing file oeedger8r-cpp/args_h_emitter.h
+Processing file oeedger8r-cpp/utils.h
+Processing file oeedger8r-cpp/ast.h
+Processing file oeedger8r-cpp/h_emitter.h
+Processing file oeedger8r-cpp/c_emitter.h
+Processing file oeedger8r-cpp/f_emitter.h
+Processing file oeedger8r-cpp/parser.cpp
+Processing file oeedger8r-cpp/w_emitter.h
+Processing file oeedger8r-cpp/main.cpp
+Writing directory view page.
+Overall coverage rate:
+  lines......: 74.0% (1303 of 1762 lines)
+  functions..: 88.3% (218 of 247 functions)
+Generating cobertura xml...
+Built target code_coverage
+```
