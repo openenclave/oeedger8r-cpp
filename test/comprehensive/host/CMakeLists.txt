@@ -29,19 +29,17 @@ add_custom_command(
 
 add_executable(
   oeedger8r_comprehensive_host
-  all_u.c
+  all_u.h
+  all_u_wrapper.cpp
   bar_u.h
   main.cpp
   bar.cpp
   foo.cpp
   testarray.cpp
-  testbasic.cpp
   testdeepcopy.cpp
   testenum.cpp
-  testerrno.cpp
   testforeign.cpp
   testpointer.cpp
-  teststring.cpp
   teststruct.cpp
   testswitchless.cpp)
 

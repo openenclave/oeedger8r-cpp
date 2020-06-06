@@ -12,6 +12,12 @@
 #include <openenclave/bits/types.h>
 #include <openenclave/corelibc/bits/defs.h>
 
+#ifdef __cplusplus
+#define OE_NOTHROW throw()
+#else
+#define OE_NOTHROW
+#endif
+
 OE_EXTERNC_BEGIN
 
 /*
@@ -23,10 +29,11 @@ OE_EXTERNC_BEGIN
 */
 
 /* The mem methods are always defined by their stdc names in oecore */
-int memcmp(const void* vl, const void* vr, size_t n);
-void* memcpy(void* OE_RESTRICT dest, const void* OE_RESTRICT src, size_t n);
-void* memmove(void* dest, const void* src, size_t n);
-void* memset(void* dest, int c, size_t n);
+int memcmp(const void* vl, const void* vr, size_t n) OE_NOTHROW;
+void* memcpy(void* OE_RESTRICT dest, const void* OE_RESTRICT src, size_t n)
+    OE_NOTHROW;
+void* memmove(void* dest, const void* src, size_t n) OE_NOTHROW;
+void* memset(void* dest, int c, size_t n) OE_NOTHROW;
 
 size_t oe_strlen(const char* s);
 
