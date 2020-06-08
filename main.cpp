@@ -65,8 +65,11 @@ int main(int argc, char** argv)
     auto get_dir = [argc, argv](int i) {
         if (i == argc)
         {
-            printf("error: missing directory name after %s\n", argv[i - 1]);
-            printf("%s\n", usage);
+            fprintf(
+                stderr,
+                "error: missing directory name after %s\n",
+                argv[i - 1]);
+            fprintf(stderr, "%s\n", usage);
             exit(1);
         }
         return fix_path_separators(argv[i]);
@@ -102,8 +105,8 @@ int main(int argc, char** argv)
 
     if (files.empty())
     {
-        printf("error: missing edl filename.\n");
-        printf("%s", usage);
+        fprintf(stderr, "error: missing edl filename.\n");
+        fprintf(stderr, "%s", usage);
         return -1;
     }
 

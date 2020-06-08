@@ -16,7 +16,7 @@ Lexer::Lexer(const std::string& file)
 #endif
     if (!f)
     {
-        printf("error: cannot open file %s\n", file.c_str());
+        fprintf(stderr, "error: cannot open file %s\n", file.c_str());
         exit(1);
     };
     fseek(f, 0, SEEK_END);
@@ -25,7 +25,7 @@ Lexer::Lexer(const std::string& file)
     fseek(f, 0, SEEK_SET);
     if (fread(contents, 1, len, f) != len)
     {
-        printf("error reading %s\n", file.c_str());
+        fprintf(stderr, "error reading %s\n", file.c_str());
         exit(1);
     }
     fclose(f);
@@ -94,7 +94,8 @@ void Lexer::skip_ws()
                 }
                 if (p_ + 1 >= end_)
                 {
-                    printf(
+                    fprintf(
+                        stderr,
                         "error: %s: EOF while looking for */\n",
                         filename_.c_str());
                     exit(1);
@@ -164,7 +165,8 @@ Token Lexer::next()
             ++p_;
         if (*p_ != '"')
         {
-            printf(
+            fprintf(
+                stderr,
                 "error: %s:%d:%d: expecting \"\n",
                 filename_.c_str(),
                 line_,
@@ -176,7 +178,8 @@ Token Lexer::next()
         return t;
     }
 
-    printf(
+    fprintf(
+        stderr,
         "error: %s:%d:%d: Unexpected token at %.1s\n",
         filename_.c_str(),
         line_,

@@ -55,8 +55,9 @@ Parser::Parser(
     }
     if (!_is_file(f))
     {
-        printf(
-            "error: File not found within search paths: %s\n",
+        fprintf(
+            stderr,
+            "error: file not found within search paths: %s\n",
             filename_.c_str());
         exit(1);
     }
@@ -106,19 +107,29 @@ Token Parser::next()
     return t;
 }
 
-bool Parser::print_loc(const char* msg_kind)
+bool Parser::print_loc(const std::string& msg_kind)
 {
-    printf("%s: %s:%d:%d ", msg_kind, filename_.c_str(), line_, col_);
+    if (msg_kind == "error")
+        fprintf(
+            stderr,
+            "%s: %s:%d:%d ",
+            msg_kind.c_str(),
+            filename_.c_str(),
+            line_,
+            col_);
+    else
+        printf(
+            "%s: %s:%d:%d ", msg_kind.c_str(), filename_.c_str(), line_, col_);
     return true;
 }
 
-#define ERROR(fmt, ...)             \
-    do                              \
-    {                               \
-        print_loc("error");         \
-        printf(fmt, ##__VA_ARGS__); \
-        printf("\n");               \
-        exit(1);                    \
+#define ERROR(fmt, ...)                      \
+    do                                       \
+    {                                        \
+        print_loc("error");                  \
+        fprintf(stderr, fmt, ##__VA_ARGS__); \
+        fprintf(stderr, "\n");               \
+        exit(1);                             \
     } while (0)
 
 void Parser::expect(const char* str)
@@ -138,9 +149,9 @@ Edl* Parser::parse()
     // Detect recursive imports.
     if (in(filename_, stack_))
     {
-        printf("recursive import detected\n");
+        fprintf(stderr, "error: recursive import detected\n");
         for (auto itr = stack_.rbegin(); itr != stack_.rend(); ++itr)
-            printf("%s\n", itr->c_str());
+            fprintf(stderr, "%s\n", itr->c_str());
         exit(1);
     }
 
@@ -401,7 +412,8 @@ void Parser::parse_trusted()
         {
             // Report error consistent with current edger8r.
             // TODO: Report location.
-            printf(
+            fprintf(
+                stderr,
                 "error: Function '%s': 'private' specifier is not supported by "
                 "oeedger8r\n",
                 trusted_funcs_.back()->name_.c_str());
@@ -722,7 +734,8 @@ Dims* Parser::parse_dims()
 
 void Parser::warn_allow_list(const std::string& fname)
 {
-    printf(
+    fprintf(
+        stderr,
         "Warning: Function '%s': Reentrant ocalls are not supported by "
         "Open Enclave. Allow list ignored.\n",
         fname.c_str());
@@ -742,13 +755,13 @@ void Parser::warn_non_portable(Function* f)
             t = t->t_;
 
         if (t->tag_ == WChar)
-            printf(fmt, f->name_.c_str(), "wchar_t", "");
+            fprintf(stderr, fmt, f->name_.c_str(), "wchar_t", "");
         else if (t->tag_ == LDouble)
-            printf(fmt, f->name_.c_str(), "long double", "");
+            fprintf(stderr, fmt, f->name_.c_str(), "long double", "");
         else if (t->tag_ == Long)
-            printf(fmt, f->name_.c_str(), "long", suggestion);
+            fprintf(stderr, fmt, f->name_.c_str(), "long", suggestion);
         else if (t->tag_ == Unsigned && t->t_->tag_ == Long)
-            printf(fmt, f->name_.c_str(), "unsigned long", suggestion);
+            fprintf(stderr, fmt, f->name_.c_str(), "unsigned long", suggestion);
     }
 }
 
@@ -759,7 +772,8 @@ void Parser::error_size_count(Function* f)
         if (p->attrs_ && !p->attrs_->size_.is_empty() &&
             !p->attrs_->count_.is_empty())
         {
-            printf(
+            fprintf(
+                stderr,
                 "error: Function '%s': simultaneous 'size' and 'count' "
                 "parameters 'size' and 'count' are not supported by "
                 "oeedger8r.",
@@ -832,7 +846,8 @@ void Parser::check_size_count_decls(
             case Int32:
             case Int64:
             {
-                printf(
+                fprintf(
+                    stderr,
                     "Warning: %s '%s': Size or count parameter '%s' should not "
                     "be signed.\n",
                     is_function ? "Function" : "struct",
@@ -869,7 +884,8 @@ void Parser::check_deep_copy_struct_by_value(Function* f)
         {
             if (field->attrs_)
             {
-                printf(
+                fprintf(
+                    stderr,
                     "error: the structure declaration \"%s\" specifies a "
                     "deep copy is expected. Referenced by value in function "
                     "\"%s\" detected.",
