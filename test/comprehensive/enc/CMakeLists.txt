@@ -29,19 +29,17 @@ add_custom_command(
 
 add_library(
   oeedger8r_comprehensive_enc SHARED
-  all_t.c
+  all_t.h
+  all_t_wrapper.cpp
   bar_t.h
   config.cpp
   foo.cpp
   testaliasing.cpp
   testarray.cpp
-  testbasic.cpp
   testdeepcopy.cpp
   testenum.cpp
-  testerrno.cpp
   testforeign.cpp
   testpointer.cpp
-  teststring.cpp
   teststruct.cpp
   testswitchless.cpp)
 
