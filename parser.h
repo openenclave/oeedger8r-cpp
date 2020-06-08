@@ -39,7 +39,7 @@ class Parser
     Token peek();
     Token peek1();
 
-    bool print_loc(const char* msg_kind);
+    bool print_loc(const std::string& msg_kind);
 
     void parse_include();
     void parse_import();
