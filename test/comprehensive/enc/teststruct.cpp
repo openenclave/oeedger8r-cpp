@@ -6,6 +6,7 @@
 #include <openenclave/enclave.h>
 #include <openenclave/internal/tests.h>
 #include <stdio.h>
+#include <string.h>
 #include <algorithm>
 #include "all_t.h"
 
@@ -381,6 +382,24 @@ MyStruct1 ecall_struct1(
 
     ++num;
     return MyStruct1{{num}, num};
+}
+
+char* ecall_struct_node1(char ch, struct MyStruct_node* list)
+{
+    OE_TEST(oe_is_outside_enclave(list, sizeof(*list)));
+    strncpy(&list->data, &ch, sizeof(ch));
+    list->next = NULL;
+
+    return &list->data;
+}
+
+struct MyStruct_node* ecall_struct_node2(char ch, struct MyStruct_node* list)
+{
+    OE_TEST(oe_is_outside_enclave(list, sizeof(*list)));
+    list->data = ch;
+    list->next = NULL;
+
+    return list;
 }
 
 OE_SET_ENCLAVE_SGX(

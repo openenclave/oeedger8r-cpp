@@ -13,6 +13,11 @@ enclave {
         int y;
     };
 
+    struct MyStruct_node {
+        char data;
+        struct MyStruct_node *next;
+    };
+
     trusted {
 
         public MyStruct1 ecall_struct1 (
@@ -44,6 +49,9 @@ enclave {
             size_t count,
             size_t size
         );
+
+        public char* ecall_struct_node1(char ch, [user_check]struct MyStruct_node* list);
+        public struct MyStruct_node* ecall_struct_node2(char ch, [user_check]struct MyStruct_node* list);
 
         public void test_struct_edl_ocalls();
     };
