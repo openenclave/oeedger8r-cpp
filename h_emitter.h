@@ -49,15 +49,17 @@ class HEmitter
         file_.close();
     }
 
-    void emit_u_h(const std::string& dir_with_sep = "")
+    void emit_u_h(
+        const std::string& dir_with_sep = "",
+        const std::string& prefix = "")
     {
         gen_t_h_ = false;
         file_.open(dir_with_sep + edl_->name_ + "_u.h");
-        emit_h();
+        emit_h(prefix);
         file_.close();
     }
 
-    void emit_h()
+    void emit_h(const std::string& prefix = "")
     {
         std::string guard =
             "EDGER8R_" + upper(edl_->name_) + (gen_t_h_ ? "_T" : "_U") + "_H";
@@ -74,7 +76,7 @@ class HEmitter
             out() << create_prototype(edl_->name_) + ";"
                   << "";
         out() << "/**** ECALL prototypes. ****/";
-        trusted_prototypes();
+        trusted_prototypes(prefix);
         out() << "/**** OCALL prototypes. ****/";
         untrusted_prototypes();
         out() << "OE_EXTERNC_END"
@@ -82,10 +84,11 @@ class HEmitter
         footer(out(), guard);
     }
 
-    void trusted_prototypes()
+    void trusted_prototypes(const std::string& prefix = "")
     {
+        // Prefix is generated, if specified, only in _u.h.
         for (Function* f : edl_->trusted_funcs_)
-            out() << prototype(f, true, gen_t_h_) + ";"
+            out() << prototype(f, true, gen_t_h_, prefix) + ";"
                   << "";
         if (edl_->trusted_funcs_.empty())
             out() << "";

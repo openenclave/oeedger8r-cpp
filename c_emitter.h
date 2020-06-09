@@ -81,7 +81,9 @@ class CEmitter
         file_.close();
     }
 
-    void emit_u_c(const std::string& dir_with_sep = "")
+    void emit_u_c(
+        const std::string& dir_with_sep = "",
+        const std::string& prefix = "")
     {
         gen_t_c_ = false;
         file_.open(dir_with_sep + edl_->name_ + "_u.c");
@@ -99,7 +101,7 @@ class CEmitter
         out() << "/**** ECALL function wrappers. ****/"
               << "";
         for (Function* f : edl_->trusted_funcs_)
-            emit_wrapper(f);
+            emit_wrapper(f, prefix);
         out() << "/**** Untrusted function IDs. ****/";
         untrusted_function_ids();
         out() << "/**** OCALL marshalling structs. ****/";
@@ -219,9 +221,9 @@ class CEmitter
         FEmitter(edl_, file_).emit(f, gen_t_c_);
     }
 
-    void emit_wrapper(Function* f)
+    void emit_wrapper(Function* f, const std::string& prefix = "")
     {
-        WEmitter(edl_, file_).emit(f, !gen_t_c_);
+        WEmitter(edl_, file_).emit(f, !gen_t_c_, prefix);
     }
 };
 
