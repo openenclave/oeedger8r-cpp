@@ -73,7 +73,7 @@ class WEmitter
         }
     }
 
-    void emit(Function* f, bool ecall)
+    void emit(Function* f, bool ecall, const std::string& prefix = "")
     {
         ecall_ = ecall;
         std::string alloc_fcn;
@@ -83,7 +83,7 @@ class WEmitter
         std::string other = ecall ? "enclave" : "host";
 
         std::string args_t = f->name_ + "_args_t";
-        out() << prototype(f, ecall, gen_t()) << "{"
+        out() << prototype(f, ecall, gen_t(), prefix) << "{"
               << "    oe_result_t _result = OE_FAILURE;"
               << "";
         enclave_status_check();
