@@ -1,0 +1,14 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+
+  // Selectively import calls and ocalls.
+  // All types are imported.
+  from "common.edl" import
+    enc_ecall2,
+    enc_ecall1,
+    host_ocall1,
+    host_ocall2;
+
+};

@@ -154,7 +154,8 @@ inline std::string mdecl_str(
 inline std::string prototype(
     const Function* f,
     bool ecall = true,
-    bool gen_t = true)
+    bool gen_t = true,
+    const std::string& prefix = "")
 {
     std::string retstr =
         (ecall != gen_t) ? "oe_result_t" : atype_str(f->rtype_);
@@ -181,7 +182,7 @@ inline std::string prototype(
             argsstr += ",\n    " + args[i];
         argsstr += ")";
     }
-    return retstr + " " + f->name_ + argsstr;
+    return retstr + " " + prefix + f->name_ + argsstr;
 }
 
 inline std::string create_prototype(const std::string& ename)

@@ -86,18 +86,37 @@ extern "C"
         OE_UNUSED(setting_count);
 
         oe_enclave_t* enc = new _oe_enclave(ocall_table, num_ocalls);
-        std::string path_with_ext = path;
+        printf("Loading virtual enclave %s\n", path);
 #if _WIN32
-        path_with_ext += ".dll";
-        HMODULE h = LoadLibraryExA(path_with_ext.c_str(), NULL, 0);
+        std::string path_with_ext = std::string(path) + ".dll";
+        HMODULE h = LoadLibraryExA(path, NULL, 0);
+        if (!h)
+            h = LoadLibraryExA(path_with_ext.c_str(), NULL, 0);
         *(void**)&enc->_set_enclave = GetProcAddress(h, "set_enclave_object");
-        printf("0x%p", h);
 #else
-        path_with_ext += ".so";
-        printf("Loading virtual enclave %s\n", path_with_ext.c_str());
-        void* h = dlopen(path_with_ext.c_str(), RTLD_NOW | RTLD_LOCAL);
+        std::string path_with_ext = std::string(path) + ".so";
+
+        void* h = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+        if (!h)
+            h = dlopen(path_with_ext.c_str(), RTLD_NOW | RTLD_LOCAL);
         *(void**)&enc->_set_enclave = dlsym(h, "set_enclave_object");
 #endif
+        if (!h)
+        {
+            fprintf(
+                stderr,
+                "fatal error: could not load shared library %s\n",
+                path);
+            exit(1);
+        }
+        if (!enc->_set_enclave)
+        {
+            fprintf(
+                stderr,
+                "fatal error: could not find _set_enclave function in %s\n",
+                path);
+            exit(1);
+        }
 
         enc->_lib_handle = h;
         *enclave = enc;
