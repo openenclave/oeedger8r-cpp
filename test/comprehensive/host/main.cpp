@@ -23,6 +23,7 @@ void test_enum_edl_ecalls(oe_enclave_t* enclave);
 void test_foreign_edl_ecalls(oe_enclave_t* enclave);
 void test_other_edl_ecalls(oe_enclave_t* enclave);
 void test_deepcopy_edl_ecalls(oe_enclave_t* enclave);
+void test_security_edl_ecalls(oe_enclave_t* enclave);
 
 int main(int argc, const char* argv[])
 {
@@ -80,6 +81,8 @@ int main(int argc, const char* argv[])
     test_deepcopy_edl_ecalls(enclave);
 
     OE_TEST(test_switchless_edl_ocalls(enclave) == OE_OK);
+
+    test_security_edl_ecalls(enclave);
 
     oe_terminate_enclave(enclave);
 

@@ -16,6 +16,7 @@ add_custom_command(
           ../edl/string.edl
           ../edl/struct.edl
           ../edl/switchless.edl
+	  ../edl/security.edl
   COMMAND
     oeedger8r --experimental --trusted --search-path
     ${CMAKE_CURRENT_SOURCE_DIR}/../edl --search-path
@@ -41,7 +42,8 @@ add_library(
   testforeign.cpp
   testpointer.cpp
   teststruct.cpp
-  testswitchless.cpp)
+  testswitchless.cpp
+  testsecurity.cpp)
 
 target_link_libraries(oeedger8r_comprehensive_enc oeedger8r_test_enclave)
 

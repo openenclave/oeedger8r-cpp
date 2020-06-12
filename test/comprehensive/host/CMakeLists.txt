@@ -16,6 +16,7 @@ add_custom_command(
           ../edl/string.edl
           ../edl/struct.edl
           ../edl/switchless.edl
+	  ../edl/security.edl
   COMMAND
     oeedger8r --experimental --untrusted --search-path
     ${CMAKE_CURRENT_SOURCE_DIR}/../edl --search-path
@@ -41,7 +42,8 @@ add_executable(
   testforeign.cpp
   testpointer.cpp
   teststruct.cpp
-  testswitchless.cpp)
+  testswitchless.cpp
+  testsecurity.cpp)
 
 # The tests intentionally use floats etc in size context. Disable warnings.
 if (CMAKE_CXX_COMPILER_ID MATCHES GNU OR CMAKE_CXX_COMPILER_ID MATCHES Clang)

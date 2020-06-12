@@ -1,0 +1,21 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  trusted {
+    public int* security_get_secret_ptr();
+
+    // trusted memory address as ECALL parameter, will cause an error
+    public void security_ecall_test1([size = 4,in] int* ptr);
+
+    // NULL as pointer in parameter for ECALL function, can be passed to enclave
+    public int security_ecall_test2([size = 16, in] int* ptr);
+
+    // NULL as pointer out parameter for ECALL function, can be passed to enclave
+    public int security_ecall_test3([size = 16, out] int* ptr);
+
+    // NULL as pointer in&out parameter for ECALL function, can be passed to enclave
+    public int security_ecall_test4([size = 16, in, out] int* ptr);
+
+  };
+};

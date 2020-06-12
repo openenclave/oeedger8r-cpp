@@ -14,6 +14,7 @@ enclave  {
     from "string.edl"   import *;
     from "struct.edl"   import *;
     from "switchless.edl" import *;
+    from "security.edl" import *;
     
     from "foo.edl" import 
         enc_foo1,
