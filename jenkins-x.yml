@@ -1,1 +1,12 @@
 buildPack: C++
+pipelineConfig:
+  pipelines:
+    pullRequest:
+      pipeline:
+        agent:
+          image: docker.io/brmclare/oesdk-ubuntu1804-sgx-dev:580
+        stages:
+          - name: release
+            steps:
+              - name: 1804-build
+                command: echo "hello"
