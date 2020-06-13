@@ -35,5 +35,4 @@ pipelineConfig:
           - name: release
             steps:
               - name: helm-build
-                dir: /workspace/source/env
                 command: echo "hello"
