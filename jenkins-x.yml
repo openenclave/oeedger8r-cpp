@@ -36,5 +36,4 @@ pipelineConfig:
             steps:
               - name: helm-build
                 dir: /workspace/source/env
-                command: make
-                args: ['build']
+                command: echo "hello"
