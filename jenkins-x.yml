@@ -1,1 +1,40 @@
 buildPack: C++
+pipelineConfig:
+  pipelines:
+    release:
+      pipeline:
+        agent:
+          image: gcr.io/jenkinsxio/builder-go
+        environment:
+          - name: DEPLOY_NAMESPACE
+            value: jx
+        stages:
+          - name: release
+            steps:
+              - name: verify-preintall
+                dir: /workspace/source/env
+                command: jx
+                args: ['step','verify','preinstall']
+              - name: install-vault
+                dir: /workspace/source/systems/vault
+                command: jx
+                args: ['step', 'boot','vault']
+              - name: apply-repositories
+                dir: /workspace/source/repositories
+                command: jx
+                args: ['step','helm','apply', '--name', 'repos']
+              - name: apply-pipeline-schedulers
+                dir: /workspace/source/prowConfig
+                command: jx
+                args: ['step','scheduler','config', 'apply', '--direct=true']
+    pullRequest:
+      pipeline:
+        agent:
+          image: gcr.io/jenkinsxio/builder-go
+        stages:
+          - name: release
+            steps:
+              - name: helm-build
+                dir: /workspace/source/env
+                command: make
+                args: ['build']
