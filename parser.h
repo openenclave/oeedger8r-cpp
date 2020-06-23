@@ -11,6 +11,7 @@
 #include "ast.h"
 #include "lexer.h"
 #include "parser.h"
+#include "preprocessor.h"
 
 class Parser
 {
@@ -20,6 +21,7 @@ class Parser
     std::string filename_;
     std::string basename_;
     std::vector<std::string> searchpaths_;
+    std::vector<std::string> defines_;
 
     Lexer* lex_;
     Token t_;
@@ -33,6 +35,8 @@ class Parser
     std::vector<Function*> untrusted_funcs_;
     std::vector<Function*> imported_trusted_funcs_;
     std::vector<Function*> imported_untrusted_funcs_;
+
+    Preprocessor pp_;
 
   private:
     Token next();
@@ -58,6 +62,8 @@ class Parser
     Type* parse_atype2(Token t);
     Dims* parse_dims();
 
+    void parse_directive();
+
   private:
     void append_include(const std::string& inc);
     void append_type(UserType* type);
@@ -79,7 +85,8 @@ class Parser
   public:
     Parser(
         const std::string& filename,
-        const std::vector<std::string>& searchpaths);
+        const std::vector<std::string>& searchpaths,
+        const std::vector<std::string>& defines);
     ~Parser();
 
     Edl* parse();

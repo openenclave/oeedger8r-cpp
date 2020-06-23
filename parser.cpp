@@ -6,6 +6,7 @@
 #include <map>
 
 #include "parser.h"
+#include "preprocessor.h"
 #include "utils.h"
 
 // Stack of edl files being parsed.
@@ -28,10 +29,12 @@ static bool _is_file(const std::string& path)
 
 Parser::Parser(
     const std::string& filename,
-    const std::vector<std::string>& searchpaths)
+    const std::vector<std::string>& searchpaths,
+    const std::vector<std::string>& defines)
     : filename_(filename),
       basename_(),
       searchpaths_(searchpaths),
+      defines_(defines),
       lex_(),
       t_(),
       line_(1),
@@ -41,7 +44,8 @@ Parser::Parser(
       trusted_funcs_(),
       untrusted_funcs_(),
       imported_trusted_funcs_(),
-      imported_untrusted_funcs_()
+      imported_untrusted_funcs_(),
+      pp_(defines)
 {
     std::string f = filename_;
     if (!_is_file(f))
@@ -192,11 +196,16 @@ Edl* Parser::parse_body()
             parse_struct_or_union(t == "struct");
         else if (t == "from")
             parse_from_import();
+        else if (t == "#")
+            parse_directive();
         else
         {
             ERROR("unexpected token %s\n", static_cast<std::string>(t).c_str());
         }
     }
+
+    if (!pp_.is_closed())
+        ERROR("unterminated #ifdef or #ifndef");
 
     append(trusted_funcs_, imported_trusted_funcs_);
     append(untrusted_funcs_, imported_untrusted_funcs_);
@@ -220,14 +229,26 @@ Edl* Parser::parse_import_file()
     if (!t.starts_with("\""))
         ERROR("expecting edl filename");
 
-    Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_);
-    Edl* edl = p.parse();
+    Edl* edl = nullptr;
+    if (pp_.is_included())
+    {
+        Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_, defines_);
+        edl = p.parse();
+    }
     return edl;
 }
 
 void Parser::parse_import()
 {
     Edl* edl = parse_import_file();
+    /*
+     * In the case that import is excluded by the directive,
+     * parse_import_file will return nullptr. Fall through directly
+     * as the following logic does not affect the progression of the
+     * parser.
+     */
+    if (!edl)
+        return;
     for (UserType* type : edl->types_)
         append_type(type);
 
@@ -251,6 +272,8 @@ static T* lookup(const std::vector<T*>& vec, const std::string& name)
 
 void Parser::append_include(const std::string& inc)
 {
+    if (!pp_.is_included())
+        return;
     if (std::find(includes_.begin(), includes_.end(), inc) == includes_.end())
         includes_.push_back(inc);
 }
@@ -259,9 +282,9 @@ void Parser::append_type(UserType* type)
 {
     std::string name = type->name_;
     UserType* t = lookup(types_, name);
-    if (t && t != type)
+    if (t && t != type && pp_.is_included())
         ERROR("Duplicate type definition detected for %s", name.c_str());
-    if (!t)
+    if (!t && pp_.is_included())
         types_.push_back(type);
 }
 
@@ -277,31 +300,44 @@ void Parser::append_function(std::vector<Function*>& funcs, Function* f)
                      (untrusted_f && f != untrusted_f) ||
                      (imported_trusted_f && imported_trusted_f != f) ||
                      (imported_untrusted_f && imported_untrusted_f != f);
-    if (duplicate)
+    if (duplicate && pp_.is_included())
         ERROR("Duplicate function definition detected for %s", name.c_str());
 
     // If the function does not already exist, append.
     if (!trusted_f && !untrusted_f && !imported_trusted_f &&
-        !imported_untrusted_f)
+        !imported_untrusted_f && pp_.is_included())
         funcs.push_back(f);
 }
 
 void Parser::parse_from_import()
 {
     Edl* edl = parse_import_file();
-    for (UserType* type : edl->types_)
-        append_type(type);
-    for (const std::string& inc : edl->includes_)
-        append_include(inc);
+    /*
+     * In the case that import is excluded by the directive,
+     * parse_import_file will return nullptr. We cannot fall through
+     * directly as the following logic affects the progression of
+     * the parser. Instead, checking if the edl is nullptr before
+     * referencing it.
+     */
+    if (edl)
+    {
+        for (UserType* type : edl->types_)
+            append_type(type);
+        for (const std::string& inc : edl->includes_)
+            append_include(inc);
+    }
 
     expect("import");
     if (peek() == '*')
     {
         next();
-        for (Function* f : edl->trusted_funcs_)
-            append_function(imported_trusted_funcs_, f);
-        for (Function* f : edl->untrusted_funcs_)
-            append_function(imported_untrusted_funcs_, f);
+        if (edl)
+        {
+            for (Function* f : edl->trusted_funcs_)
+                append_function(imported_trusted_funcs_, f);
+            for (Function* f : edl->untrusted_funcs_)
+                append_function(imported_untrusted_funcs_, f);
+        }
     }
     else
     {
@@ -311,25 +347,29 @@ void Parser::parse_from_import()
             if (!t.is_name())
                 ERROR("expecting function name");
 
-            std::string function_name = t;
-            Function* imported_f = lookup(edl->trusted_funcs_, function_name);
-            std::vector<Function*>* funcs = &imported_trusted_funcs_;
+            if (edl)
+            {
+                std::string function_name = t;
+                Function* imported_f =
+                    lookup(edl->trusted_funcs_, function_name);
+                std::vector<Function*>* funcs = &imported_trusted_funcs_;
 
-            if (!imported_f)
-            {
-                imported_f = lookup(edl->untrusted_funcs_, function_name);
-                funcs = &imported_untrusted_funcs_;
-            }
+                if (!imported_f)
+                {
+                    imported_f = lookup(edl->untrusted_funcs_, function_name);
+                    funcs = &imported_untrusted_funcs_;
+                }
 
-            if (imported_f)
-            {
-                append_function(*funcs, imported_f);
-            }
-            else
-            {
-                ERROR(
-                    "function %s not found in imported edl.",
-                    function_name.c_str());
+                if (imported_f)
+                {
+                    append_function(*funcs, imported_f);
+                }
+                else
+                {
+                    ERROR(
+                        "function %s not found in imported edl.",
+                        function_name.c_str());
+                }
             }
 
             if (peek() != ';')
@@ -400,9 +440,19 @@ void Parser::parse_struct_or_union(bool is_struct)
 
 void Parser::parse_trusted()
 {
+    if (!pp_.is_closed())
+        ERROR("unterminated #ifdef or #ifndef");
+
     expect("{");
     while (peek() != '}')
     {
+        if (peek() == "#")
+        {
+            next();
+            parse_directive();
+            continue;
+        }
+
         bool is_private = true;
         if (peek() == "public")
             is_private = (next(), false);
@@ -420,17 +470,32 @@ void Parser::parse_trusted()
             exit(1);
         }
     }
+    if (!pp_.is_closed())
+        ERROR("unterminated #ifdef or #ifndef");
+
     expect("}");
     expect(";");
 }
 
 void Parser::parse_untrusted()
 {
+    if (!pp_.is_closed())
+        ERROR("unterminated #ifdef or #ifndef");
+
     expect("{");
     while (peek() != '}')
     {
+        if (peek() == "#")
+        {
+            next();
+            parse_directive();
+            continue;
+        }
         append_function(untrusted_funcs_, parse_function_decl(false));
     }
+    if (!pp_.is_closed())
+        ERROR("unterminated #ifdef or #ifndef");
+
     expect("}");
     expect(";");
 }
@@ -730,6 +795,43 @@ Dims* Parser::parse_dims()
     }
 
     return dims;
+}
+
+void Parser::parse_directive()
+{
+    if (peek() == "ifdef")
+    {
+        next();
+        Token t = next();
+        std::string name = static_cast<std::string>(t);
+        if (!pp_.process(Ifdef, name))
+            ERROR("unexpected error with #ifdef");
+    }
+    else if (peek() == "ifndef")
+    {
+        next();
+        Token t = next();
+        std::string name = static_cast<std::string>(t);
+        if (!pp_.process(Ifndef, name))
+            ERROR("unexpected error with #ifndef");
+    }
+    else if (peek() == "else")
+    {
+        next();
+        if (!pp_.process(Else))
+            ERROR("no previous #ifdef or #ifndef");
+    }
+    else if (peek() == "endif")
+    {
+        next();
+        if (!pp_.process(Endif))
+            ERROR("no previous #ifdef, #ifndef, or #else");
+    }
+    else
+    {
+        Token t = next();
+        ERROR("unsupported directive %s", static_cast<std::string>(t).c_str());
+    }
 }
 
 void Parser::warn_allow_list(const std::string& fname)

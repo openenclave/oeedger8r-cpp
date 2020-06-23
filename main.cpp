@@ -40,6 +40,8 @@ const char* usage =
     "--trusted             Generate trusted proxy and bridge\n"
     "--untrusted-dir <dir> Specify the directory for saving untrusted code\n"
     "--trusted-dir   <dir> Specify the directory for saving trusted code\n"
+    "-D<name>              Define the name to be used by the C-style "
+    "preprocessor\n"
     "--experimental        Enable experimental features\n"
     "--help                Print this help message\n"
     "\n"
@@ -55,6 +57,7 @@ int main(int argc, char** argv)
     std::string untrusted_dir = ".";
     std::string trusted_dir = ".";
     std::vector<std::string> files;
+    std::vector<std::string> defines;
     int i = 1;
 
     if (argc == 1)
@@ -95,6 +98,17 @@ int main(int argc, char** argv)
             untrusted_dir = get_dir(i++);
         else if (a == "--experimental")
             ;
+        else if (a.rfind("-D", 0) == 0)
+        {
+            std::string define = a.substr(2);
+            if (define.empty())
+            {
+                fprintf(stderr, "error: macro name missing after '-D'\n");
+                fprintf(stderr, "%s", usage);
+                return -1;
+            }
+            defines.push_back(define);
+        }
         else if (a == "--help")
         {
             printf("%s\n", usage);
@@ -131,7 +145,7 @@ int main(int argc, char** argv)
 
     for (std::string& file : files)
     {
-        Parser p(file, searchpaths);
+        Parser p(file, searchpaths, defines);
         Edl* edl = p.parse();
 
         if (gen_trusted)
