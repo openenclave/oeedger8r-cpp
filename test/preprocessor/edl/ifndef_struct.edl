@@ -1,0 +1,17 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+#ifndef TEST_STRUCT
+  struct TestDefStruct {
+    int num;
+    char c;
+  };
+#endif
+
+  trusted {
+#ifndef TEST_STRUCT
+    public int enc_ifndef_struct(TestDefStruct st);
+#endif
+  };
+};

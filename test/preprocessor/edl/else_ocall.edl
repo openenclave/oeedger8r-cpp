@@ -1,0 +1,19 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  trusted {
+#ifdef TEST_IF_OCALL
+    public void enc_if_ocall();
+#else
+    public void enc_else_ocall();
+#endif
+  };
+  untrusted {
+#ifdef TEST_IF_OCALL
+    int host_if_ocall(int magic);
+#else
+    int host_else_ocall(int magic);
+#endif
+  };
+};

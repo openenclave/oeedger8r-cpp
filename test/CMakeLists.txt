@@ -7,6 +7,7 @@ add_subdirectory(cmdline)
 add_subdirectory(comprehensive)
 add_subdirectory(import)
 add_subdirectory(prefix)
+add_subdirectory(preprocessor)
 
 # Virtual Mode execution for tests.
 add_subdirectory(virtual)

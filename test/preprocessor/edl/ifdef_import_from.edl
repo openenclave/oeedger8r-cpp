@@ -1,0 +1,8 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+#ifdef TEST_IMPORT_FROM
+  from "import_3.edl" import enc_import_5;
+#endif
+};
