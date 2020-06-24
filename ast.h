@@ -103,4 +103,12 @@ struct Edl
     std::vector<Function*> untrusted_funcs_;
 };
 
+enum Directive
+{
+    Ifdef,
+    Ifndef,
+    Else,
+    Endif,
+};
+
 #endif // AST_H

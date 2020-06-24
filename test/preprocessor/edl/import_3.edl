@@ -1,0 +1,9 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  trusted {
+    public int enc_import_5(int magic);
+    public int enc_import_6(int magic);
+  };
+};
