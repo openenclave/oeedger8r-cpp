@@ -1,0 +1,24 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+#ifdef COMPLEX1
+enclave {
+#endif
+
+trusted # ifdef COMPLEX2 {
+    public void #ifdef COMPLEX3 enc_complex_ecall1 #endif (
+           [in #ifdef COMPLEX3 , count=arg2 #endif] int* arg1
+#ifdef COMPLEX4
+                , int arg2
+#ifdef COMPLEX5
+                , int arg3
+#endif
+#endif
+        );
+# endif
+};
+
+#ifdef COMPLEX1
+}
+#endif
+;

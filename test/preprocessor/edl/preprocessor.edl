@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 enclave {
+  import "complex.edl"
   import "ifdef_ecall.edl"
   import "ifdef_enum.edl"
   import "ifdef_ocall.edl"

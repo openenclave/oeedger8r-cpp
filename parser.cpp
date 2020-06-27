@@ -80,8 +80,8 @@ Parser::Parser(
             basename_.begin(), basename_.begin() + static_cast<ptrdiff_t>(p));
     lex_ = new Lexer(f);
 
-    t_ = lex_->next();
-    t1_ = lex_->next();
+    t_ = get_preprocessed_token();
+    t1_ = get_preprocessed_token();
 
     // Remember full path to file.
     filename_ = f;
@@ -105,7 +105,7 @@ Token Parser::next()
 {
     Token t = t_;
     t_ = t1_;
-    t1_ = lex_->next();
+    t1_ = get_preprocessed_token();
     line_ = t.line_;
     col_ = t.col_;
     return t;
@@ -135,6 +135,60 @@ bool Parser::print_loc(const std::string& msg_kind)
         fprintf(stderr, "\n");               \
         exit(1);                             \
     } while (0)
+
+Token Parser::get_preprocessed_token()
+{
+    Token t = lex_->next();
+
+    while (t == "#")
+    {
+        t = lex_->next();
+        if (t == "ifdef")
+        {
+            t = lex_->next();
+            std::string name = static_cast<std::string>(t);
+            if (!pp_.process(Ifdef, name))
+                ERROR("unexpected error with #ifdef");
+            t = lex_->next();
+        }
+        else if (t == "ifndef")
+        {
+            t = lex_->next();
+            std::string name = static_cast<std::string>(t);
+            if (!pp_.process(Ifndef, name))
+                ERROR("unexpected error with #ifndef");
+            t = lex_->next();
+        }
+        else if (t == "else")
+        {
+            if (!pp_.process(Else))
+                ERROR("no previous #ifdef or #ifndef");
+            t = lex_->next();
+        }
+        else if (t == "endif")
+        {
+            if (!pp_.process(Endif))
+                ERROR("no previous #ifdef, #ifndef, or #else");
+            t = lex_->next();
+        }
+        else
+        {
+            ERROR(
+                "unsupported directive %s",
+                static_cast<std::string>(t).c_str());
+        }
+
+        if (!pp_.is_included())
+        {
+            // Skip tokens till next preprocessor directive.
+            while (t != "#" && !t.is_eof())
+            {
+                t = lex_->next();
+            }
+        }
+    }
+    return t;
+}
 
 void Parser::expect(const char* str)
 {
@@ -196,8 +250,6 @@ Edl* Parser::parse_body()
             parse_struct_or_union(t == "struct");
         else if (t == "from")
             parse_from_import();
-        else if (t == "#")
-            parse_directive();
         else
         {
             ERROR("unexpected token %s\n", static_cast<std::string>(t).c_str());
@@ -272,8 +324,6 @@ static T* lookup(const std::vector<T*>& vec, const std::string& name)
 
 void Parser::append_include(const std::string& inc)
 {
-    if (!pp_.is_included())
-        return;
     if (std::find(includes_.begin(), includes_.end(), inc) == includes_.end())
         includes_.push_back(inc);
 }
@@ -282,9 +332,9 @@ void Parser::append_type(UserType* type)
 {
     std::string name = type->name_;
     UserType* t = lookup(types_, name);
-    if (t && t != type && pp_.is_included())
+    if (t && t != type)
         ERROR("Duplicate type definition detected for %s", name.c_str());
-    if (!t && pp_.is_included())
+    if (!t)
         types_.push_back(type);
 }
 
@@ -300,12 +350,12 @@ void Parser::append_function(std::vector<Function*>& funcs, Function* f)
                      (untrusted_f && f != untrusted_f) ||
                      (imported_trusted_f && imported_trusted_f != f) ||
                      (imported_untrusted_f && imported_untrusted_f != f);
-    if (duplicate && pp_.is_included())
+    if (duplicate)
         ERROR("Duplicate function definition detected for %s", name.c_str());
 
     // If the function does not already exist, append.
     if (!trusted_f && !untrusted_f && !imported_trusted_f &&
-        !imported_untrusted_f && pp_.is_included())
+        !imported_untrusted_f)
         funcs.push_back(f);
 }
 
@@ -440,19 +490,9 @@ void Parser::parse_struct_or_union(bool is_struct)
 
 void Parser::parse_trusted()
 {
-    if (!pp_.is_closed())
-        ERROR("unterminated #ifdef or #ifndef");
-
     expect("{");
     while (peek() != '}')
     {
-        if (peek() == "#")
-        {
-            next();
-            parse_directive();
-            continue;
-        }
-
         bool is_private = true;
         if (peek() == "public")
             is_private = (next(), false);
@@ -470,8 +510,6 @@ void Parser::parse_trusted()
             exit(1);
         }
     }
-    if (!pp_.is_closed())
-        ERROR("unterminated #ifdef or #ifndef");
 
     expect("}");
     expect(";");
@@ -479,22 +517,11 @@ void Parser::parse_trusted()
 
 void Parser::parse_untrusted()
 {
-    if (!pp_.is_closed())
-        ERROR("unterminated #ifdef or #ifndef");
-
     expect("{");
     while (peek() != '}')
     {
-        if (peek() == "#")
-        {
-            next();
-            parse_directive();
-            continue;
-        }
         append_function(untrusted_funcs_, parse_function_decl(false));
     }
-    if (!pp_.is_closed())
-        ERROR("unterminated #ifdef or #ifndef");
 
     expect("}");
     expect(";");
@@ -797,43 +824,6 @@ Dims* Parser::parse_dims()
     }
 
     return dims;
-}
-
-void Parser::parse_directive()
-{
-    if (peek() == "ifdef")
-    {
-        next();
-        Token t = next();
-        std::string name = static_cast<std::string>(t);
-        if (!pp_.process(Ifdef, name))
-            ERROR("unexpected error with #ifdef");
-    }
-    else if (peek() == "ifndef")
-    {
-        next();
-        Token t = next();
-        std::string name = static_cast<std::string>(t);
-        if (!pp_.process(Ifndef, name))
-            ERROR("unexpected error with #ifndef");
-    }
-    else if (peek() == "else")
-    {
-        next();
-        if (!pp_.process(Else))
-            ERROR("no previous #ifdef or #ifndef");
-    }
-    else if (peek() == "endif")
-    {
-        next();
-        if (!pp_.process(Endif))
-            ERROR("no previous #ifdef, #ifndef, or #else");
-    }
-    else
-    {
-        Token t = next();
-        ERROR("unsupported directive %s", static_cast<std::string>(t).c_str());
-    }
 }
 
 void Parser::warn_allow_list(const std::string& fname)
