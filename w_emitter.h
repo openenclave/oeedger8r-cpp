@@ -90,7 +90,6 @@ class WEmitter
         out() << "    /* Marshalling struct. */"
               << "    " + args_t +
                      " _args, *_pargs_in = NULL, *_pargs_out = NULL;";
-        save_deep_copy_pointers(f);
         out() << "    /* Marshalling buffer and sizes. */"
               << "    size_t _input_buffer_size = 0;"
               << "    size_t _output_buffer_size = 0;"
@@ -101,9 +100,8 @@ class WEmitter
               << "    size_t _input_buffer_offset = 0;"
               << "    size_t _output_buffer_offset = 0;"
               << "    size_t _output_bytes_written = 0;"
-              << "";
-        deep_copy_buffer(f);
-        out() << "    /* Fill marshalling struct. */"
+              << ""
+              << "    /* Fill marshalling struct. */"
               << "    memset(&_args, 0, sizeof(_args));";
         fill_marshalling_struct(f);
         out() << ""
@@ -167,7 +165,6 @@ class WEmitter
             out() << "    *_retval = _pargs_out->_retval;";
         else
             out() << "    /* No return value. */";
-        restore_pointers_deep_copy(f);
         unmarshal_outputs(f);
         out() << "";
         propagate_errno(f);
@@ -178,7 +175,6 @@ class WEmitter
               << "        " + free_fcn + "(_buffer);";
         if (!gen_t())
             out() << "";
-        deep_copy_free_pointers(f);
         out() << "    return _result;"
               << "}"
               << "";
@@ -549,37 +545,6 @@ class WEmitter
         else
             out() << "    /* Errno propagation not enabled. */";
         out() << "";
-    }
-
-    void save_deep_copy_pointers(Function* f)
-    {
-        (void)f;
-        if (gen_t())
-            out() << "    /* No pointers to save for deep copy. */";
-        out() << "";
-    }
-
-    void deep_copy_buffer(Function* f)
-    {
-        (void)f;
-        if (!gen_t())
-            out() << "    /* Deep copy buffer. */"
-                  << "    /* No pointers to save for deep copy. */"
-                  << "";
-    }
-
-    void restore_pointers_deep_copy(Function* f)
-    {
-        (void)f;
-        out() << "    /* No pointers to restore for deep copy. */";
-    }
-
-    void deep_copy_free_pointers(Function* f)
-    {
-        (void)f;
-        if (!gen_t())
-            out() << "    /* No `_ptrs` to free for deep copy. */"
-                  << "";
     }
 };
 
