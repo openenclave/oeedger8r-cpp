@@ -119,10 +119,12 @@ class Preprocessor
      * preprocessor. */
     bool is_included()
     {
-        if (stack_.empty() || stack_.back().condition)
-            return true;
-
-        return false;
+        for (auto& s : stack_)
+        {
+            if (!s.condition)
+                return false;
+        }
+        return true;
     }
 
     /* Determine if there is an open control block. */

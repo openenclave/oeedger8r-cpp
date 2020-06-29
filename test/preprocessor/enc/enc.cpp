@@ -93,3 +93,9 @@ int enc_else_struct(TestElseStruct st)
     OE_TEST(st.c == 9);
     return 10;
 }
+
+int enc_nested_ifdef_ecall(int magic)
+{
+    OE_TEST(magic == 123);
+    return 456;
+}

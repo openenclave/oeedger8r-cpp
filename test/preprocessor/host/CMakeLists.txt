@@ -4,8 +4,9 @@ add_custom_command(
   OUTPUT preprocessor_args.h preprocessor_u.h preprocessor_u.c
   COMMAND
     oeedger8r --untrusted -DTEST_ECALL -DTEST_ENUM -DTEST_OCALL -DTEST_STRUCT
-    -DTEST_IMPORT -DTEST_IMPORT_FROM_ALL -DTEST_IMPORT_FROM --search-path
-    ${CMAKE_CURRENT_SOURCE_DIR}/../edl preprocessor.edl)
+    -DTEST_NESTED_IFDEF_ECALL -DTEST_IMPORT -DTEST_IMPORT_FROM_ALL
+    -DTEST_IMPORT_FROM --search-path ${CMAKE_CURRENT_SOURCE_DIR}/../edl
+    preprocessor.edl)
 
 add_executable(oeedger8r_preprocessor_host preprocessor_u.c host.cpp)
 
