@@ -770,6 +770,8 @@ Type* Parser::parse_atype2(Token t)
     MATCH("uint16_t", UInt16);
     MATCH("uint32_t", UInt32);
     MATCH("uint64_t", UInt64);
+    MATCH("float", Float);
+    MATCH("double", Double);
 
     if (t.is_name())
         return new Type{Foreign, {}, t};
