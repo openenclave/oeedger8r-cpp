@@ -5,8 +5,9 @@ add_custom_command(
   OUTPUT preprocessor_args.h preprocessor_t.h preprocessor_t.c
   COMMAND
     oeedger8r --trusted -DTEST_ECALL -DTEST_ENUM -DTEST_OCALL -DTEST_STRUCT
-    -DTEST_IMPORT -DTEST_IMPORT_FROM_ALL -DTEST_IMPORT_FROM --search-path
-    ${CMAKE_CURRENT_SOURCE_DIR}/../edl preprocessor.edl)
+    -DTEST_NESTED_IFDEF_ECALL -DTEST_IMPORT -DTEST_IMPORT_FROM_ALL
+    -DTEST_IMPORT_FROM --search-path ${CMAKE_CURRENT_SOURCE_DIR}/../edl
+    preprocessor.edl)
 
 add_library(oeedger8r_preprocessor_enc SHARED preprocessor_t.c enc.cpp)
 

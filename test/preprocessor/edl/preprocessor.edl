@@ -19,4 +19,8 @@ enclave {
   import "else_ocall.edl"
   import "else_struct.edl"
   import "else_import.edl"
+  import "nested_ifdef_ecall_true.edl"
+  import "nested_ifdef_ecall_false.edl"
+  import "nested_ifndef_ecall.edl"
+  import "nested_else_ecall.edl"
 };

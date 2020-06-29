@@ -85,6 +85,9 @@ int main(int argc, char** argv)
     OE_TEST(enc_else_struct(enclave, &ret_val, elsets) == OE_OK);
     OE_TEST(ret_val == 10);
 
+    OE_TEST(enc_nested_ifdef_ecall(enclave, &ret_val, 123) == OE_OK);
+    OE_TEST(ret_val == 456);
+
     OE_TEST(oe_terminate_enclave(enclave) == OE_OK);
 
     printf("=== passed all tests (preprocessor)\n");

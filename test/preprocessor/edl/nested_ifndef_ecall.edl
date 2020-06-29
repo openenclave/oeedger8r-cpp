@@ -1,0 +1,12 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  trusted {
+#ifdef TEST_NESTED_IFNDEF_ECALL
+#ifndef TEST_ECALL
+    public int enc_nested_ifndef_ecall(int magic);
+#endif
+#endif
+  };
+};
