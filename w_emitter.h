@@ -81,11 +81,17 @@ class WEmitter
         std::string call;
         get_functions(f, alloc_fcn, free_fcn, call);
         std::string other = ecall ? "enclave" : "host";
+        std::string fcn_id = edl_->name_ + "_fcn_id_" + f->name_;
 
         std::string args_t = f->name_ + "_args_t";
         out() << prototype(f, ecall, gen_t(), prefix) << "{"
               << "    oe_result_t _result = OE_FAILURE;"
               << "";
+        if (!gen_t())
+        {
+            out() << "    static uint64_t global_id = OE_GLOBAL_ECALL_ID_NULL;"
+                  << "";
+        }
         enclave_status_check();
         out() << "    /* Marshalling struct. */"
               << "    " + args_t +
@@ -135,9 +141,17 @@ class WEmitter
               << "    /* Call " + other + " function. */"
               << "    if ((_result = " + call + "(";
         if (!gen_t())
-            out() << "             enclave,";
-        out() << "             " + edl_->name_ + "_fcn_id_" + f->name_ + ","
-              << "             _input_buffer,"
+        {
+            out() << "             enclave,"
+                  << "             &global_id,"
+                  << "             __" + edl_->name_ + "_ecall_info_table[" +
+                         fcn_id + "].name,";
+        }
+        else
+        {
+            out() << "             " + fcn_id + ",";
+        }
+        out() << "             _input_buffer,"
               << "             _input_buffer_size,"
               << "             _output_buffer,"
               << "             _output_buffer_size,"
