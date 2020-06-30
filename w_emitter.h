@@ -84,7 +84,16 @@ class WEmitter
         std::string fcn_id = edl_->name_ + "_fcn_id_" + f->name_;
 
         std::string args_t = f->name_ + "_args_t";
-        out() << prototype(f, ecall, gen_t(), prefix) << "{"
+        /*
+         * To avoid duplicated definitions of the ecall wrapper on the host
+         * side, the ecall wrapper is defined as [edl_name]_[prefix]_[fun_name].
+         * Then we use weak_alias([edl_name]_[prefix]_[fun_name],
+         * [prefix]_[fun_name]) to make the exposed [prefix]_[fun_name] weak.
+         * Therefore, only one of the implementations will be picked by the
+         * linker.
+         */
+        std::string _prefix = ecall ? edl_->name_ + "_" + prefix : prefix;
+        out() << prototype(f, ecall, gen_t(), _prefix) << "{"
               << "    oe_result_t _result = OE_FAILURE;"
               << "";
         if (!gen_t())
@@ -192,6 +201,10 @@ class WEmitter
         out() << "    return _result;"
               << "}"
               << "";
+        if (!gen_t())
+            out() << "OE_WEAK_ALIAS(" + _prefix + f->name_ + ", " + prefix +
+                         f->name_ + ");"
+                  << "";
     }
 
     bool gen_t() const
