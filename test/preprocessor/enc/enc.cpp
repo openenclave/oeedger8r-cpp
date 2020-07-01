@@ -99,3 +99,9 @@ int enc_nested_ifdef_ecall(int magic)
     OE_TEST(magic == 123);
     return 456;
 }
+
+void enc_complex_ecall1(int* a, int n)
+{
+    OE_TEST(*a == 1);
+    OE_TEST(n == 1);
+}

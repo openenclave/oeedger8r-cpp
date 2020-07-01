@@ -88,6 +88,10 @@ int main(int argc, char** argv)
     OE_TEST(enc_nested_ifdef_ecall(enclave, &ret_val, 123) == OE_OK);
     OE_TEST(ret_val == 456);
 
+    // Exercise complex preprocessor usage.
+    int p = 1;
+    OE_TEST(enc_complex_ecall1(enclave, &p, p) == OE_OK);
+
     OE_TEST(oe_terminate_enclave(enclave) == OE_OK);
 
     printf("=== passed all tests (preprocessor)\n");

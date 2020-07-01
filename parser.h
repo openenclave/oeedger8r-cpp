@@ -39,6 +39,7 @@ class Parser
     Preprocessor pp_;
 
   private:
+    Token get_preprocessed_token();
     Token next();
     Token peek();
     Token peek1();
@@ -61,8 +62,6 @@ class Parser
     Type* parse_atype1(Token t);
     Type* parse_atype2(Token t);
     Dims* parse_dims();
-
-    void parse_directive();
 
   private:
     void append_include(const std::string& inc);

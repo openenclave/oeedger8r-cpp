@@ -56,15 +56,8 @@ enclave_item :
     | enum_declaration
     | struct_declaration
     | union_declaration
-    | preprocessor_directive
     | trusted_section
     | untrusted_section
-
-preprocessor_directive:
-  "#" "ifdef" identifier
-  | "#" "ifndef" identifier
-  | "#" "else"
-  | "#" "endif"
 
 include_statement: "include" string
 
@@ -142,7 +135,7 @@ pointer =
 
 array_dimension = '[' (integer | identifier) ']'
 
-trusted_section = "trusted" '{' (trusted_function|preprocessor_directive)* '}' ';'
+trusted_section = "trusted" '{' trusted_function* '}' ';'
 
 trusted_function =
     "public" function_declaration [allow_list] [trusted_suffixes] ';'
@@ -150,7 +143,7 @@ trusted_function =
 allow_list = "allow" '(' identifier_list ')'
 
 untrusted_section =
-    "untrusted" '{' (untrusted_function|preprocessor_directive)* '}' [untrusted_suffixes] ';'
+    "untrusted" '{' untrusted_function* '}' [untrusted_suffixes] ';'
 
 function_declaration = atype identifier parameter_list
 
