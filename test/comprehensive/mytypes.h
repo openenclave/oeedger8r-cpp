@@ -12,3 +12,5 @@ typedef struct
 typedef my_type1* my_type2;
 
 typedef my_type1 my_type3[10];
+
+#define EXT_IV_SIZE 17
