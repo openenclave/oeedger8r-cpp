@@ -9,6 +9,7 @@
 
 #include <openenclave/edger8r/host.h>
 #include <mutex>
+#include <string>
 
 #include "enclave_impl.h"
 
