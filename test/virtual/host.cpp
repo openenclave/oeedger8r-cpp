@@ -7,6 +7,8 @@
 #include <dlfcn.h>
 #endif
 
+#include <string>
+
 #include <openenclave/edger8r/host.h>
 
 #include "enclave_impl.h"
