@@ -1,6 +1,8 @@
 # oeedger8r-cpp
 An implementation of oeedger8r in C++
 
+[![Build status](https://oe-prow-status.uksouth.cloudapp.azure.com/badge.svg?jobs=ci-openenclave-test-infra-*)](https://oe-prow-status.uksouth.cloudapp.azure.com/badge.svg?jobs=ci-openenclave-oeedger8r-*)
+
 # Prerequisites
 
 ## Compiler
