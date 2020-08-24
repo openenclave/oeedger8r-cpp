@@ -64,12 +64,24 @@ OE_EXTERNC_BEGIN
  */
 oe_result_t oe_call_enclave_function(
     oe_enclave_t* enclave,
-    uint32_t function_id,
+    uint64_t* global_id,
+    const char* name,
     const void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,
     size_t output_buffer_size,
     size_t* output_bytes_written);
+
+/* OE_WEAK_ALIAS */
+#ifdef __GNUC__
+#define OE_WEAK_ALIAS(OLD, NEW) \
+    extern __typeof(OLD) NEW __attribute__((__weak__, alias(#OLD)))
+#elif _MSC_VER
+#define OE_WEAK_ALIAS(OLD, NEW) \
+    __pragma(comment(linker, "/alternatename:" #NEW "=" #OLD))
+#else
+#error OE_WEAK_ALIAS not implemented
+#endif
 
 /**
  * Placeholder.

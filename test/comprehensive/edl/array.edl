@@ -351,4 +351,20 @@ enclave  {
 
         void ocall_array_assert_all_called();
     };
+
+
+    include "mytypes.h"
+    enum my_type {
+        IV_SIZE = 16
+    };
+
+
+    trusted {
+        public void ecall_named_dims(uint8_t data1[IV_SIZE], uint8_t data2[EXT_IV_SIZE]);
+    };
+
+    untrusted {
+        void ocall_named_dims(uint8_t data1[IV_SIZE], uint8_t data2[EXT_IV_SIZE]);
+    };
+
 };

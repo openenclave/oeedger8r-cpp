@@ -124,6 +124,7 @@ Token Lexer::next()
         case ',':
         case ';':
         case '=':
+        case '#':
         {
             Token t = {line_, col_, p_, p_ + 1};
             p_++;

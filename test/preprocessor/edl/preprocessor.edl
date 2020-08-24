@@ -1,0 +1,27 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+  import "complex.edl"
+  import "ifdef_ecall.edl"
+  import "ifdef_enum.edl"
+  import "ifdef_ocall.edl"
+  import "ifdef_struct.edl"
+  import "ifdef_import.edl"
+  import "ifdef_import_from_all.edl"
+  import "ifdef_import_from.edl"
+  import "ifndef_ecall.edl"
+  import "ifndef_enum.edl"
+  import "ifndef_ocall.edl"
+  import "ifndef_struct.edl"
+  import "ifndef_import.edl"
+  import "else_ecall.edl"
+  import "else_enum.edl"
+  import "else_ocall.edl"
+  import "else_struct.edl"
+  import "else_import.edl"
+  import "nested_ifdef_ecall_true.edl"
+  import "nested_ifdef_ecall_false.edl"
+  import "nested_ifndef_ecall.edl"
+  import "nested_else_ecall.edl"
+};

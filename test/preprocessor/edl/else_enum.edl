@@ -1,0 +1,26 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+#ifdef TEST_IF_ENUM
+  enum TestIfEnum {
+    Test_If_Enum_1,
+    Test_If_Enum_2,
+    Test_If_Enum_3
+  };
+#else
+  enum TestElseEnum {
+    Test_Else_Enum_1,
+    Test_Else_Enum_2,
+    Test_Else_Enum_3
+  };
+#endif
+
+  trusted {
+#ifdef TEST_IF_ENUM
+    public int enc_if_enum(TestIfEnum value);
+#else
+    public int enc_else_enum(TestElseEnum value);
+#endif
+  };
+};

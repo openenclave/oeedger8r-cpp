@@ -1,0 +1,12 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave {
+
+  // Import all functions.
+  from "common.edl" import *;
+
+  trusted {
+    public int enc_local_ecall1(int val);
+  };
+};

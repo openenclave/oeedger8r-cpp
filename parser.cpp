@@ -6,6 +6,7 @@
 #include <map>
 
 #include "parser.h"
+#include "preprocessor.h"
 #include "utils.h"
 
 // Stack of edl files being parsed.
@@ -28,10 +29,12 @@ static bool _is_file(const std::string& path)
 
 Parser::Parser(
     const std::string& filename,
-    const std::vector<std::string>& searchpaths)
+    const std::vector<std::string>& searchpaths,
+    const std::vector<std::string>& defines)
     : filename_(filename),
       basename_(),
       searchpaths_(searchpaths),
+      defines_(defines),
       lex_(),
       t_(),
       line_(1),
@@ -41,7 +44,8 @@ Parser::Parser(
       trusted_funcs_(),
       untrusted_funcs_(),
       imported_trusted_funcs_(),
-      imported_untrusted_funcs_()
+      imported_untrusted_funcs_(),
+      pp_(defines)
 {
     std::string f = filename_;
     if (!_is_file(f))
@@ -76,8 +80,8 @@ Parser::Parser(
             basename_.begin(), basename_.begin() + static_cast<ptrdiff_t>(p));
     lex_ = new Lexer(f);
 
-    t_ = lex_->next();
-    t1_ = lex_->next();
+    t_ = get_preprocessed_token();
+    t1_ = get_preprocessed_token();
 
     // Remember full path to file.
     filename_ = f;
@@ -101,7 +105,7 @@ Token Parser::next()
 {
     Token t = t_;
     t_ = t1_;
-    t1_ = lex_->next();
+    t1_ = get_preprocessed_token();
     line_ = t.line_;
     col_ = t.col_;
     return t;
@@ -131,6 +135,60 @@ bool Parser::print_loc(const std::string& msg_kind)
         fprintf(stderr, "\n");               \
         exit(1);                             \
     } while (0)
+
+Token Parser::get_preprocessed_token()
+{
+    Token t = lex_->next();
+
+    while (t == "#")
+    {
+        t = lex_->next();
+        if (t == "ifdef")
+        {
+            t = lex_->next();
+            std::string name = static_cast<std::string>(t);
+            if (!pp_.process(Ifdef, name))
+                ERROR("unexpected error with #ifdef");
+            t = lex_->next();
+        }
+        else if (t == "ifndef")
+        {
+            t = lex_->next();
+            std::string name = static_cast<std::string>(t);
+            if (!pp_.process(Ifndef, name))
+                ERROR("unexpected error with #ifndef");
+            t = lex_->next();
+        }
+        else if (t == "else")
+        {
+            if (!pp_.process(Else))
+                ERROR("no previous #ifdef or #ifndef");
+            t = lex_->next();
+        }
+        else if (t == "endif")
+        {
+            if (!pp_.process(Endif))
+                ERROR("no previous #ifdef, #ifndef, or #else");
+            t = lex_->next();
+        }
+        else
+        {
+            ERROR(
+                "unsupported directive %s",
+                static_cast<std::string>(t).c_str());
+        }
+
+        if (!pp_.is_included())
+        {
+            // Skip tokens till next preprocessor directive.
+            while (t != "#" && !t.is_eof())
+            {
+                t = lex_->next();
+            }
+        }
+    }
+    return t;
+}
 
 void Parser::expect(const char* str)
 {
@@ -198,6 +256,9 @@ Edl* Parser::parse_body()
         }
     }
 
+    if (!pp_.is_closed())
+        ERROR("unterminated #ifdef or #ifndef");
+
     append(trusted_funcs_, imported_trusted_funcs_);
     append(untrusted_funcs_, imported_untrusted_funcs_);
 
@@ -220,14 +281,26 @@ Edl* Parser::parse_import_file()
     if (!t.starts_with("\""))
         ERROR("expecting edl filename");
 
-    Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_);
-    Edl* edl = p.parse();
+    Edl* edl = nullptr;
+    if (pp_.is_included())
+    {
+        Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_, defines_);
+        edl = p.parse();
+    }
     return edl;
 }
 
 void Parser::parse_import()
 {
     Edl* edl = parse_import_file();
+    /*
+     * In the case that import is excluded by the directive,
+     * parse_import_file will return nullptr. Fall through directly
+     * as the following logic does not affect the progression of the
+     * parser.
+     */
+    if (!edl)
+        return;
     for (UserType* type : edl->types_)
         append_type(type);
 
@@ -289,19 +362,32 @@ void Parser::append_function(std::vector<Function*>& funcs, Function* f)
 void Parser::parse_from_import()
 {
     Edl* edl = parse_import_file();
-    for (UserType* type : edl->types_)
-        append_type(type);
-    for (const std::string& inc : edl->includes_)
-        append_include(inc);
+    /*
+     * In the case that import is excluded by the directive,
+     * parse_import_file will return nullptr. We cannot fall through
+     * directly as the following logic affects the progression of
+     * the parser. Instead, checking if the edl is nullptr before
+     * referencing it.
+     */
+    if (edl)
+    {
+        for (UserType* type : edl->types_)
+            append_type(type);
+        for (const std::string& inc : edl->includes_)
+            append_include(inc);
+    }
 
     expect("import");
     if (peek() == '*')
     {
         next();
-        for (Function* f : edl->trusted_funcs_)
-            append_function(imported_trusted_funcs_, f);
-        for (Function* f : edl->untrusted_funcs_)
-            append_function(imported_untrusted_funcs_, f);
+        if (edl)
+        {
+            for (Function* f : edl->trusted_funcs_)
+                append_function(imported_trusted_funcs_, f);
+            for (Function* f : edl->untrusted_funcs_)
+                append_function(imported_untrusted_funcs_, f);
+        }
     }
     else
     {
@@ -311,25 +397,29 @@ void Parser::parse_from_import()
             if (!t.is_name())
                 ERROR("expecting function name");
 
-            std::string function_name = t;
-            Function* imported_f = lookup(edl->trusted_funcs_, function_name);
-            std::vector<Function*>* funcs = &imported_trusted_funcs_;
+            if (edl)
+            {
+                std::string function_name = t;
+                Function* imported_f =
+                    lookup(edl->trusted_funcs_, function_name);
+                std::vector<Function*>* funcs = &imported_trusted_funcs_;
 
-            if (!imported_f)
-            {
-                imported_f = lookup(edl->untrusted_funcs_, function_name);
-                funcs = &imported_untrusted_funcs_;
-            }
+                if (!imported_f)
+                {
+                    imported_f = lookup(edl->untrusted_funcs_, function_name);
+                    funcs = &imported_untrusted_funcs_;
+                }
 
-            if (imported_f)
-            {
-                append_function(*funcs, imported_f);
-            }
-            else
-            {
-                ERROR(
-                    "function %s not found in imported edl.",
-                    function_name.c_str());
+                if (imported_f)
+                {
+                    append_function(*funcs, imported_f);
+                }
+                else
+                {
+                    ERROR(
+                        "function %s not found in imported edl.",
+                        function_name.c_str());
+                }
             }
 
             if (peek() != ';')
@@ -420,6 +510,7 @@ void Parser::parse_trusted()
             exit(1);
         }
     }
+
     expect("}");
     expect(";");
 }
@@ -431,6 +522,7 @@ void Parser::parse_untrusted()
     {
         append_function(untrusted_funcs_, parse_function_decl(false));
     }
+
     expect("}");
     expect(";");
 }
@@ -705,6 +797,8 @@ Type* Parser::parse_atype2(Token t)
     MATCH("uint16_t", UInt16);
     MATCH("uint32_t", UInt32);
     MATCH("uint64_t", UInt64);
+    MATCH("float", Float);
+    MATCH("double", Double);
 
     if (t.is_name())
         return new Type{Foreign, {}, t};

@@ -85,6 +85,18 @@ void test_array_edl_ecalls(oe_enclave_t* enclave)
         enclave, ecall_array_unsigned_long_long);
 
     OE_TEST(ecall_array_assert_all_called(enclave) == OE_OK);
+
+    {
+        uint8_t data1[IV_SIZE];
+        for (uint32_t i = 0; i < IV_SIZE; ++i)
+            data1[i] = i;
+        uint8_t data2[EXT_IV_SIZE];
+        for (uint32_t i = 0; i < EXT_IV_SIZE; ++i)
+            data2[i] = i;
+
+        OE_TEST(ecall_named_dims(enclave, data1, data2) == OE_OK);
+    }
+
     printf("=== test_array_edl_ecalls passed\n");
 }
 
@@ -349,4 +361,13 @@ void ocall_array_assert_all_called()
     }
 
     OE_TEST(num_ocalls == expected_num_calls);
+}
+
+void ocall_named_dims(uint8_t data1[IV_SIZE], uint8_t data2[EXT_IV_SIZE])
+{
+    for (uint32_t i = 0; i < IV_SIZE; ++i)
+        OE_TEST(data1[i] == i);
+
+    for (uint32_t i = 0; i < EXT_IV_SIZE; ++i)
+        OE_TEST(data2[i] == i);
 }

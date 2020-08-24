@@ -6,6 +6,7 @@
 #include <openenclave/enclave.h>
 #include <openenclave/internal/tests.h>
 #include <stdio.h>
+#include <string.h>
 #include <algorithm>
 #include "all_t.h"
 
@@ -87,6 +88,18 @@ void test_array_edl_ocalls()
     test_ocall_array_fun<unsigned long long>(ocall_array_unsigned_long_long);
 
     OE_TEST(ocall_array_assert_all_called() == OE_OK);
+
+    {
+        uint8_t data1[IV_SIZE];
+        for (uint32_t i = 0; i < IV_SIZE; ++i)
+            data1[i] = i;
+        uint8_t data2[EXT_IV_SIZE];
+        for (uint32_t i = 0; i < EXT_IV_SIZE; ++i)
+            data2[i] = i;
+
+        OE_TEST(ocall_named_dims(data1, data2) == OE_OK);
+    }
+
     printf("=== test_array_edl_ocalls passed\n");
 }
 
@@ -356,4 +369,13 @@ void ecall_array_assert_all_called()
     }
 
     OE_TEST(num_ecalls == expected_num_calls);
+}
+
+void ecall_named_dims(uint8_t data1[IV_SIZE], uint8_t data2[EXT_IV_SIZE])
+{
+    for (uint32_t i = 0; i < IV_SIZE; ++i)
+        OE_TEST(data1[i] == i);
+
+    for (uint32_t i = 0; i < EXT_IV_SIZE; ++i)
+        OE_TEST(data2[i] == i);
 }

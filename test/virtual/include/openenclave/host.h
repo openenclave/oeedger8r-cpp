@@ -138,6 +138,11 @@ typedef struct _oe_enclave_setting
     } u;
 } oe_enclave_setting_t;
 
+typedef struct _oe_ecall_info_t
+{
+    const char* name;
+} oe_ecall_info_t;
+
 /**
  * Create an enclave from an enclave image file.
  *
@@ -180,6 +185,8 @@ oe_result_t oe_create_enclave(
     uint32_t setting_count,
     const oe_ocall_func_t* ocall_table,
     uint32_t ocall_count,
+    const oe_ecall_info_t* ecall_name_table,
+    uint32_t ecall_count,
     oe_enclave_t** enclave);
 
 /**
@@ -390,6 +397,30 @@ void oe_free_key(
     size_t key_buffer_size,
     uint8_t* key_info,
     size_t key_info_size);
+
+#define OE_GLOBAL_ECALL_ID_NULL OE_UINT64_MAX
+#define OE_ECALL_ID_NULL OE_UINT64_MAX
+
+/**
+ * Obtain the id from the global ecall table by name.
+ * Note that this is an internal API, which is exposed for the purpose of
+ * testing.
+ */
+oe_result_t oe_get_global_ecall_id_by_name(
+    const char* name,
+    uint64_t* global_id);
+
+/**
+ * Obtain the ecall id based on the global id. If the global id is not set, the
+ * name is used to add a new entry to the global ecall table and set the global
+ * id. Note that this is an internal API, which is exposed for the purpose of
+ * testing.
+ */
+oe_result_t oe_get_enclave_function_id(
+    oe_enclave_t* enclave,
+    uint64_t* global_id,
+    const char* name,
+    uint64_t* id);
 
 OE_EXTERNC_END
 

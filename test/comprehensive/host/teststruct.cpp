@@ -220,6 +220,20 @@ void test_struct_edl_ecalls(oe_enclave_t* enclave)
     OE_TEST(retval.s0.x == 2);
     OE_TEST(retval.y == 2);
 
+    struct MyStruct_node* list =
+        (struct MyStruct_node*)malloc(sizeof(MyStruct_node));
+    char value = 'h';
+    char* res1 = NULL;
+    OE_TEST(ecall_struct_node1(enclave, &res1, value, list) == OE_OK);
+    OE_TEST(*res1 == value);
+
+    struct MyStruct_node* res2 = NULL;
+    OE_TEST(ecall_struct_node2(enclave, &res2, value, list) == OE_OK);
+    OE_TEST(res2->data == value);
+    OE_TEST(res2->next == NULL);
+
+    free(list);
+
     printf("=== test_struct_edl_ecalls passed\n");
 }
 

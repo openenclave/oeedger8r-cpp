@@ -94,8 +94,10 @@ class CEmitter
               << ""
               << "OE_EXTERNC_BEGIN"
               << ""
-              << "/**** Trusted function IDs ****/";
+              << "/**** Trusted function IDs. ****/";
         trusted_function_ids();
+        out() << "/**** Trusted function names. ****/";
+        trusted_function_names();
         out() << "/**** ECALL marshalling structs. ****/";
         ecall_marshalling_structs();
         out() << "/**** ECALL function wrappers. ****/"
@@ -125,6 +127,8 @@ class CEmitter
               << "               setting_count,"
               << "               __" + edl_->name_ + "_ocall_function_table,"
               << "               " + to_str(edl_->untrusted_funcs_.size()) + ","
+              << "               __" + edl_->name_ + "_ecall_info_table,"
+              << "                " + to_str(edl_->trusted_funcs_.size()) + ","
               << "               enclave);"
               << "}"
               << ""
@@ -145,6 +149,17 @@ class CEmitter
               << "";
     }
 
+    void trusted_function_names()
+    {
+        out() << "static const oe_ecall_info_t __" + edl_->name_ +
+                     "_ecall_info_table[] = "
+              << "{";
+        for (Function* f : edl_->trusted_funcs_)
+            out() << "    { \"" + f->name_ + "\" },";
+        out() << "};"
+              << "";
+    }
+
     void untrusted_function_ids()
     {
         out() << "enum"
@@ -157,6 +172,7 @@ class CEmitter
               << "};"
               << "";
     }
+
     void ecall_marshalling_structs()
     {
         for (Function* f : edl_->trusted_funcs_)

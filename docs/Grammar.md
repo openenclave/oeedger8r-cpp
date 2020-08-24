@@ -17,6 +17,9 @@ E.g: `'{' ',' '*'`.
 
 Comments and white-spaces are assumed to be removed by the lexer.
 
+C-style preprocessor directives are defined by starting with `#`.
+E.g: `#ifdef NAME` `#else` `#endif`.
+
 In addition to keywords and operators, the lexer recognizes the following tokens
 - `identifier` A sequence of alphanumeric characters or '_' that starts with a character or '_'.
    Valid identifiers in EDL are valid C language identifiers.
@@ -153,5 +156,32 @@ trusted_suffixes = "transition_using_threads"
 
 untrusted_suffixes = "transition_using_threads" | "propagate_errno"
 
+
+```
+
+### C-style Preprocessor Directives
+
+```c
+
+conditional:
+    if_directive identifier statement* [else_directive statement*] endif_directive
+
+if_directive:
+  "#" "ifdef"
+  | "#" "ifndef"
+
+else_directive: "#" "else"
+
+endif_directive: "#" "endif"
+
+statement =
+    include_statement
+    | import_statement
+    | from_import_statement
+    | enum_declaration
+    | struct_declaration
+    | union_declaration
+    | trusted_function
+    | untrusted_function
 
 ```
