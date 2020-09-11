@@ -111,29 +111,35 @@ Token Parser::next()
     return t;
 }
 
-bool Parser::print_loc(const std::string& msg_kind)
+bool Parser::print_loc(
+    const std::string& msg_kind,
+    const char* filename,
+    int line,
+    int col)
 {
     if (msg_kind == "error")
-        fprintf(
-            stderr,
-            "%s: %s:%d:%d ",
-            msg_kind.c_str(),
-            filename_.c_str(),
-            line_,
-            col_);
+        fprintf(stderr, "%s: %s:%d:%d ", msg_kind.c_str(), filename, line, col);
     else
-        printf(
-            "%s: %s:%d:%d ", msg_kind.c_str(), filename_.c_str(), line_, col_);
+        printf("%s: %s:%d:%d ", msg_kind.c_str(), filename_.c_str(), line, col);
     return true;
 }
 
-#define ERROR(fmt, ...)                      \
-    do                                       \
-    {                                        \
-        print_loc("error");                  \
-        fprintf(stderr, fmt, ##__VA_ARGS__); \
-        fprintf(stderr, "\n");               \
-        exit(1);                             \
+#define ERROR_AT(t, fmt, ...)                                   \
+    do                                                          \
+    {                                                           \
+        print_loc("error", filename_.c_str(), t.line_, t.col_); \
+        fprintf(stderr, fmt, ##__VA_ARGS__);                    \
+        fprintf(stderr, "\n");                                  \
+        exit(1);                                                \
+    } while (0)
+
+#define ERROR(fmt, ...)                                     \
+    do                                                      \
+    {                                                       \
+        print_loc("error", filename_.c_str(), line_, col_); \
+        fprintf(stderr, fmt, ##__VA_ARGS__);                \
+        fprintf(stderr, "\n");                              \
+        exit(1);                                            \
     } while (0)
 
 Token Parser::get_preprocessed_token()
@@ -611,12 +617,36 @@ Decl* Parser::parse_decl(bool fcn)
             static_cast<std::string>(name).c_str());
     decl->name_ = name;
     decl->dims_ = parse_dims();
+    validate_attributes(decl, fcn);
     return decl;
 }
 
-static bool _no_kind(const Attrs* a)
+Parser::AttrTok Parser::check_attribute(Token t)
 {
-    return !(a->isptr_ || a->isary_ || a->string_ || a->wstring_);
+    if (t == "in")
+        return TokIn;
+    if (t == "out")
+        return TokOut;
+    if (t == "count")
+        return TokCount;
+    if (t == "size")
+        return TokSize;
+    if (t == "isptr")
+        return TokIsPtr;
+    if (t == "isary")
+        return TokIsAry;
+    if (t == "string")
+        return TokString;
+    if (t == "wstring")
+        return TokWstring;
+    if (t == "user_check")
+        return TokUserCheck;
+    if (t == "sizefunc")
+        ERROR("The attribute 'sizefunc' is deprecated. Please use 'size' "
+              "attribute instead.");
+    ERROR("unknown attribute: `%s'", static_cast<std::string>(t).c_str());
+    // Unreachable
+    return TokIn;
 }
 
 Attrs* Parser::parse_attributes(bool fcn)
@@ -634,53 +664,66 @@ Attrs* Parser::parse_attributes(bool fcn)
                              false,
                              Token::empty(),
                              Token::empty()};
+    attr_toks_.clear();
     do
     {
         Token t = next();
-        if (fcn && t == "in" && !(attrs->in_ || attrs->inout_))
-            *(attrs->out_ ? &attrs->inout_ : &attrs->in_) = true;
-        else if (fcn && t == "out" && !(attrs->out_ || attrs->inout_))
-            *(attrs->in_ ? &attrs->inout_ : &attrs->out_) = true;
-        else if (fcn && t == "string" && _no_kind(attrs))
-            attrs->string_ = true;
-        else if (fcn && t == "wstring" && _no_kind(attrs))
-            attrs->wstring_ = true;
-        else if (fcn && t == "isptr" && _no_kind(attrs))
-            attrs->isptr_ = true;
-        else if (fcn && t == "isary" && _no_kind(attrs))
-            attrs->isary_ = true;
-        else if (t == "user_check" && !attrs->user_check_)
-            attrs->user_check_ = true;
-        else if (t == "count" || t == "size")
+        AttrTok atok = check_attribute(t);
+
+        // Only count and size attributes are valid for struct properties.
+        if (!fcn && (atok != TokCount && atok != TokSize))
+            ERROR(
+                "attribute `%s' is not valid for struct properties",
+                static_cast<std::string>(t).c_str());
+
+        // Check for duplicate specification.
+        for (auto&& itr : attr_toks_)
+        {
+            if (itr.first == atok)
+                ERROR(
+                    "duplicated attribute: `%s'",
+                    static_cast<std::string>(t).c_str());
+        }
+        attr_toks_.push_back(std::make_pair(atok, t));
+
+        // Process the attribute.
+        if (atok == TokCount || atok == TokSize)
         {
             expect("=");
             Token v = next();
             if (!v.is_name() && !v.is_int())
                 ERROR("expecting integer");
-            if (t == "count")
-            {
-                if (!attrs->count_.is_empty())
-                    ERROR("multiple count specifier");
+            if (atok == TokCount)
                 attrs->count_ = v;
-            }
             else
-            {
-                if (!attrs->size_.is_empty())
-                    ERROR("multiple size specifier");
                 attrs->size_ = v;
-            }
         }
+        else if (atok == TokUserCheck)
+            attrs->user_check_ = true;
+        else if (atok == TokIn)
+            *(attrs->out_ ? &attrs->inout_ : &attrs->in_) = true;
+        else if (atok == TokOut)
+            *(attrs->in_ ? &attrs->inout_ : &attrs->out_) = true;
+        else if (atok == TokString)
+            attrs->string_ = true;
+        else if (atok == TokWstring)
+            attrs->wstring_ = true;
+        else if (atok == TokIsPtr)
+            attrs->isptr_ = true;
+        else if (atok == TokIsAry)
+            attrs->isary_ = true;
         else
             ERROR(
-                "expecting attribute got %s",
-                static_cast<std::string>(t).c_str());
+                "unexpected token `%s''", static_cast<std::string>(t).c_str());
 
+        // Check for sentinel.
         if (peek() != ']')
             expect(",");
 
     } while (peek() != ']');
 
     expect("]");
+
     return attrs;
 }
 
@@ -987,6 +1030,169 @@ void Parser::check_deep_copy_struct_by_value(Function* f)
                     f->name_.c_str());
                 exit(1);
             }
+        }
+    }
+}
+
+void Parser::validate_attributes(Decl* d, bool is_function)
+{
+    Attrs* attrs = d->attrs_;
+    Type* type = d->type_;
+    if (!attrs)
+        return;
+
+    bool isptr = type->tag_ == Ptr;
+    bool isary = d->dims_ && !d->dims_->empty();
+    Type* base = nullptr;
+    if (isptr)
+    {
+        base = type->t_;
+        if (base->tag_ == Const)
+            base = base->t_;
+    }
+
+    for (auto&& itr : attr_toks_)
+    {
+        if (itr.first == TokString || itr.first == TokWstring)
+        {
+            if (attrs->out_)
+                ERROR_AT(
+                    itr.second,
+                    "string/wstring attribute should be used with an `in' "
+                    "attribute");
+
+            if (!attrs->in_ && !attrs->inout_)
+                ERROR_AT(
+                    itr.second,
+                    "string/wstring attributes must be used with pointer "
+                    "direction");
+
+            if (!attrs->count_.is_empty() || !attrs->size_.is_empty())
+                ERROR_AT(
+                    itr.second,
+                    "size attributes are mutually exclusive with (w)string "
+                    "attribute");
+
+            if (attrs->string_ && attrs->wstring_)
+                ERROR_AT(
+                    itr.second,
+                    "`string' and `wstring' are mutually exclusive");
+
+            if (itr.first == TokString && !(isptr && base->tag_ == Char))
+                ERROR_AT(
+                    itr.second,
+                    "invalid `string' attribute - `%s' is not char pointer",
+                    d->name_.c_str());
+
+            if (itr.first == TokWstring && !(isptr && base->tag_ == WChar))
+                ERROR_AT(
+                    itr.second,
+                    "invalid `wstring' attribute - `%s' is not wchar_t pointer",
+                    static_cast<std::string>(d->name_).c_str());
+        }
+
+        else if (itr.first == TokIsAry || itr.first == TokIsPtr)
+        {
+            const char* tokstr =
+                (itr.first == TokIsAry) ? "`isary'" : "`isptr'";
+
+            if (attrs->isary_ && attrs->isptr_)
+                ERROR_AT(
+                    itr.second, "`isary' cannot be used with `isptr' together");
+
+            if (!attrs->in_ && !attrs->inout_ && !attrs->out_ &&
+                !attrs->user_check_)
+                ERROR_AT(
+                    itr.second,
+                    "%s should have direction attribute or `user_check'",
+                    tokstr);
+
+            if (type->tag_ != Foreign)
+            {
+                std::string typestr = atype_str(d->type_);
+                ERROR_AT(
+                    itr.second,
+                    "%s attribute is only valid for user defined type, not for "
+                    "`%s'",
+                    tokstr,
+                    typestr.c_str());
+            }
+        }
+
+        else if (itr.first == TokCount || itr.first == TokSize)
+        {
+            if (is_function)
+            {
+                if (!attrs->in_ && !attrs->inout_ && !attrs->out_)
+                    ERROR_AT(
+                        itr.second,
+                        "size/count attributes must be used with pointer "
+                        "direction");
+            }
+
+            if (!isptr && !attrs->isptr_ && !isary && !attrs->isary_)
+            {
+                std::string t = atype_str(d->type_);
+                if (d->type_->tag_ == Foreign)
+                {
+                    const char* tokstr =
+                        (itr.first == TokCount) ? "count" : "size";
+                    std::string typestr = atype_str(d->type_);
+                    ERROR_AT(
+                        itr.second,
+                        "`%s' is invalid for plain type `%s'",
+                        tokstr,
+                        typestr.c_str());
+                }
+                else
+                {
+                    ERROR_AT(
+                        itr.second,
+                        "unexpected pointer attributes for `%s'",
+                        atype_str(type).c_str());
+                }
+            }
+        }
+
+        else if (itr.first == TokIn || itr.first == TokOut)
+        {
+            if (!isptr && !attrs->isptr_ && !isary && !attrs->isary_)
+            {
+                std::string t = atype_str(d->type_);
+                if (d->type_->tag_ == Foreign)
+                {
+                    const char* tokstr = (itr.first == TokIn) ? "in" : "out";
+                    std::string typestr = atype_str(d->type_);
+                    ERROR_AT(
+                        itr.second,
+                        "`%s' is invalid for plain type `%s'",
+                        tokstr,
+                        typestr.c_str());
+                }
+                else
+                {
+                    ERROR_AT(
+                        itr.second,
+                        "unexpected pointer attributes for `%s'",
+                        atype_str(type).c_str());
+                }
+            }
+        }
+
+        else if (itr.first == TokUserCheck)
+        {
+            std::string typestr = atype_str(d->type_);
+            if (attrs->in_ || attrs->out_ || attrs->inout_)
+                ERROR_AT(
+                    itr.second,
+                    "pointer direction and `user_check' are mutually "
+                    "exclusive");
+
+            if (!attrs->isptr_ && !attrs->isary_ && !isary && !isptr)
+                ERROR_AT(
+                    itr.second,
+                    "`user_check' attribute is invalid for plain type `%s'",
+                    typestr.c_str());
         }
     }
 }

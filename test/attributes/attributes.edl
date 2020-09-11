@@ -1,0 +1,138 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave
+{
+    untrusted
+    {
+// Checks for string/wstring
+#ifdef OUT_STRING
+        void func([string, out] char* str);
+#endif
+#ifdef OUT_WSTRING
+        void func([wstring, out] wchar_t * str);
+#endif
+#ifdef STRING_NO_DIR
+        void func([string] char* str);
+#endif
+#ifdef WSTRING_NO_DIR
+        void func([wstring] wchar_t * str);
+#endif
+#ifdef STRING_COUNT
+        void func([in, string, count = 1] char* str);
+#endif
+#ifdef WSTRING_COUNT
+        void func([in, wstring, count = 1] wchar_t * str);
+#endif
+#ifdef STRING_SIZE
+        void func([in, string, size = 1] char* str);
+#endif
+#ifdef WSTRING_SIZE
+        void func([in, wstring, size = 1] wchar_t * str);
+#endif
+#ifdef STRING_TYPE1
+        void func([in, string] char str);
+#endif
+#ifdef STRING_TYPE2
+        void func([in, string] int* str);
+#endif
+#ifdef WSTRING_TYPE1
+        void func([in, wstring] wchar_t str);
+#endif
+#ifdef WSTRING_TYPE2
+        void func([in, wstring] int* str);
+#endif
+
+// Checks for isary/isptr
+#ifdef ISARY_ISPTR
+        void func([isary, isptr] my_type obj);
+#endif
+#ifdef ISARY_NO_DIR
+        void func([isary] my_type obj);
+#endif
+#ifdef ISPTR_NO_DIR
+        void func([isptr] my_type obj);
+#endif
+#ifdef ISARY_TYPE1
+        void func([in, isary] int obj);
+#endif
+#ifdef ISARY_TYPE2
+        void func([in, isary] int* obj);
+#endif
+#ifdef ISPTR_TYPE1
+        void func([in, isptr] int obj);
+#endif
+#ifdef ISPTR_TYPE2
+        void func([in, isptr] int* obj);
+#endif
+
+// Checks for user_check
+#ifdef USER_CHECK_IN
+        void func([user_check, in] int* i);
+#endif
+#ifdef USER_CHECK_OUT
+        void func([user_check, in] int* i);
+#endif
+#ifdef USER_CHECK_IN_OUT
+        void func([user_check, in, out] int* i);
+#endif
+#ifdef USER_CHECK_SIZE
+        void func([user_check, size = 1] int* i);
+#endif
+#ifdef USER_CHECK_COUNT
+        void func([user_check, count = 1] int* i);
+#endif
+#ifdef USER_CHECK_STRING
+        void func([user_check, string] int* i);
+#endif
+#ifdef USER_CHECK_WSTRING
+        void func([user_check, wstring] int* i);
+#endif
+#ifdef USER_CHECK_PLAIN_TYPE
+        void func([user_check] mytype x);
+#endif
+
+// Checks for in/out
+#ifdef IN_TYPE1
+        void func([in] int x);
+#endif
+#ifdef IN_TYPE2
+        void func([in] mytype x);
+#endif
+#ifdef OUT_TYPE1
+        void func([in] int x);
+#endif
+#ifdef OUT_TYPE2
+        void func([out] mytype x);
+#endif
+
+// Checks for count/size
+#ifdef COUNT_NO_DIR
+        void func([count = 1] int* x);
+#endif
+#ifdef SIZE_NO_DIR
+        void func([size = 1] int* x);
+#endif
+#ifdef COUNT_TYPE
+        void func([count = 1, in] int x);
+#endif
+#ifdef COUNT_PLAIN_TYPE
+        void func([count = 1, in] mytype x);
+#endif
+#ifdef SIZE_PLAIN_TYPE
+        void func([size = 1, in] mytype x);
+#endif
+#ifdef COUNT_INVALID_PROP1
+        void func([count = count_prop, in] int* x);
+#endif
+#ifdef COUNT_INVALID_PROP2
+        void func([count = count_prop, in] int* x, int* count_prop);
+#endif
+#ifdef SIZE_INVALID_PROP1
+        void func([size = size_prop, in] int* x);
+#endif
+#ifdef SIZE_INVALID_PROP2
+        void func([size = size_prop, in] int* x, int* size_prop);
+#endif
+    };
+};
