@@ -148,3 +148,68 @@ add_attributes_test(SIZE_INVALID_PROP1
                     "could not find declaration for 'size_prop'" "")
 
 add_attributes_test(SIZE_INVALID_PROP2 "size/count has invalid type" "")
+
+# Attributes are not supported for unions.
+add_attributes_test(UNION_UNSUPPORTED "attributes are not allowed for unions"
+                    "")
+
+# Attributes are not supported for enums. Detected as parse error.
+add_attributes_test(ENUM_UNSUPPORTED "expecting identifier, got \\[" "")
+
+# Tests for struct attributes.
+add_attributes_test(
+  STRUCT_DIR_IN
+  "only `count' and `size' attributes can be specified for struct properties"
+  "")
+
+add_attributes_test(
+  STRUCT_DIR_OUT
+  "only `count' and `size' attributes can be specified for struct properties"
+  "")
+
+add_attributes_test(
+  STRUCT_ISARY
+  "only `count' and `size' attributes can be specified for struct properties"
+  "")
+
+add_attributes_test(
+  STRUCT_ISPTR
+  "only `count' and `size' attributes can be specified for struct properties"
+  "")
+
+add_attributes_test(
+  STRUCT_STRING
+  "only `count' and `size' attributes can be specified for struct properties"
+  "")
+
+add_attributes_test(
+  STRUCT_WSTRING
+  "only `count' and `size' attributes can be specified for struct properties"
+  "")
+
+add_attributes_test(
+  STRUCT_USER_CHECK
+  "only `count' and `size' attributes can be specified for struct properties"
+  "")
+
+add_attributes_test(STRUCT_COUNT_TYPE "unexpected pointer attributes for `int'"
+                    "")
+
+add_attributes_test(STRUCT_SIZE_TYPE "unexpected pointer attributes for `int'"
+                    "")
+
+add_attributes_test(STRUCT_COUNT_PLAIN_TYPE
+                    "`count' is invalid for plain type `mytype'" "")
+
+add_attributes_test(STRUCT_SIZE_PLAIN_TYPE
+                    "`size' is invalid for plain type `mytype'" "")
+
+add_attributes_test(STRUCT_COUNT_INVALID_PROP1
+                    "could not find declaration for 'p_count'" "")
+
+add_attributes_test(STRUCT_COUNT_INVALID_PROP2 "size/count has invalid type" "")
+
+add_attributes_test(STRUCT_SIZE_INVALID_PROP1
+                    "could not find declaration for 'p_size'" "")
+
+add_attributes_test(STRUCT_SIZE_INVALID_PROP2 "size/count has invalid type" "")

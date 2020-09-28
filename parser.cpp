@@ -39,6 +39,8 @@ Parser::Parser(
       t_(),
       line_(1),
       col_(1),
+      in_struct_(false),
+      in_function_(false),
       includes_(),
       types_(),
       trusted_funcs_(),
@@ -471,6 +473,7 @@ void Parser::parse_enum()
 
 void Parser::parse_struct_or_union(bool is_struct)
 {
+    in_struct_ = is_struct;
     Token name = next();
     if (!name.is_name())
         ERROR(
@@ -481,7 +484,7 @@ void Parser::parse_struct_or_union(bool is_struct)
     expect("{");
     while (peek() != "}")
     {
-        Decl* decl = parse_decl(false);
+        Decl* decl = parse_decl();
         if (decl->attrs_ && !is_struct)
             ERROR("attributes are not allowed for unions");
         type->fields_.push_back(decl);
@@ -492,6 +495,7 @@ void Parser::parse_struct_or_union(bool is_struct)
     check_size_count_decls(type->name_, false, type->fields_);
     expect("}");
     expect(";");
+    in_struct_ = false;
 }
 
 void Parser::parse_trusted()
@@ -559,6 +563,7 @@ void Parser::parse_allow_list(bool trusted, const std::string& fname)
 
 Function* Parser::parse_function_decl(bool trusted)
 {
+    in_function_ = true;
     Function* f = new Function{{}, {}, {}, false, false};
     f->rtype_ = parse_atype();
     Token name = next();
@@ -576,7 +581,7 @@ Function* Parser::parse_function_decl(bool trusted)
 
     while (peek() != ')')
     {
-        f->params_.push_back(parse_decl(true));
+        f->params_.push_back(parse_decl());
         if (peek() != ')')
             expect(",");
     }
@@ -602,13 +607,14 @@ Function* Parser::parse_function_decl(bool trusted)
     error_size_count(f);
     check_size_count_decls(f->name_, true, f->params_);
     check_deep_copy_struct_by_value(f);
+    in_function_ = false;
     return f;
 }
 
-Decl* Parser::parse_decl(bool fcn)
+Decl* Parser::parse_decl()
 {
     Decl* decl = new Decl{{}, {}, {}, nullptr};
-    decl->attrs_ = parse_attributes(fcn);
+    decl->attrs_ = parse_attributes();
     decl->type_ = parse_atype();
     Token name = next();
     if (!name.is_name())
@@ -617,7 +623,7 @@ Decl* Parser::parse_decl(bool fcn)
             static_cast<std::string>(name).c_str());
     decl->name_ = name;
     decl->dims_ = parse_dims();
-    validate_attributes(decl, fcn);
+    validate_attributes(decl);
     return decl;
 }
 
@@ -649,10 +655,11 @@ Parser::AttrTok Parser::check_attribute(Token t)
     return TokIn;
 }
 
-Attrs* Parser::parse_attributes(bool fcn)
+Attrs* Parser::parse_attributes()
 {
     if (peek() != '[')
         return nullptr;
+
     next();
     Attrs* attrs = new Attrs{false,
                              false,
@@ -671,10 +678,9 @@ Attrs* Parser::parse_attributes(bool fcn)
         AttrTok atok = check_attribute(t);
 
         // Only count and size attributes are valid for struct properties.
-        if (!fcn && (atok != TokCount && atok != TokSize))
-            ERROR(
-                "attribute `%s' is not valid for struct properties",
-                static_cast<std::string>(t).c_str());
+        if (in_struct_ && (atok != TokCount && atok != TokSize))
+            ERROR("only `count' and `size' attributes can be specified for "
+                  "struct properties");
 
         // Check for duplicate specification.
         for (auto&& itr : attr_toks_)
@@ -1034,7 +1040,7 @@ void Parser::check_deep_copy_struct_by_value(Function* f)
     }
 }
 
-void Parser::validate_attributes(Decl* d, bool is_function)
+void Parser::validate_attributes(Decl* d)
 {
     Attrs* attrs = d->attrs_;
     Type* type = d->type_;
@@ -1121,7 +1127,7 @@ void Parser::validate_attributes(Decl* d, bool is_function)
 
         else if (itr.first == TokCount || itr.first == TokSize)
         {
-            if (is_function)
+            if (in_function_)
             {
                 if (!attrs->in_ && !attrs->inout_ && !attrs->out_)
                     ERROR_AT(

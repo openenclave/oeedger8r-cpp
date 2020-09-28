@@ -135,4 +135,118 @@ enclave
         void func([size = size_prop, in] int* x, int* size_prop);
 #endif
     };
+
+
+// Checks for unions
+#ifdef UNION_UNSUPPORTED
+    union MyUnion
+    {
+        [count=5] int* p;
+    };
+#endif
+
+
+// Checks for enums
+#ifdef ENUM_UNSUPPORTED
+    enum MyEnum
+    {
+        [count=5] X = 5
+    };
+#endif
+
+
+// Checks for struct
+#ifdef STRUCT_DIR_IN
+    struct MyStruct
+    {
+       [in] int* p;
+    };
+#endif
+#ifdef STRUCT_DIR_OUT
+    struct MyStruct
+    {
+       [out] int* p;
+    };
+#endif
+#ifdef STRUCT_ISPTR
+    struct MyStruct
+    {
+       [isptr] int* p;
+    };
+#endif
+#ifdef STRUCT_ISARY
+    struct MyStruct
+    {
+       [isary] int* p;
+    };
+#endif
+#ifdef STRUCT_STRING
+    struct MyStruct
+    {
+       [string] int* p;
+    };
+#endif
+#ifdef STRUCT_WSTRING
+    struct MyStruct
+    {
+       [wstring] int* p;
+    };
+#endif
+#ifdef STRUCT_USER_CHECK
+    struct MyStruct
+    {
+       [user_check] int* p;
+    };
+#endif
+#ifdef STRUCT_COUNT_TYPE
+    struct MyStruct
+    {
+       [count=1] int p;
+    };
+#endif
+#ifdef STRUCT_SIZE_TYPE
+    struct MyStruct
+    {
+       [size=4] int p;
+    };
+#endif
+#ifdef STRUCT_COUNT_PLAIN_TYPE
+    struct MyStruct
+    {
+       [count=1] mytype p;
+    };
+#endif
+#ifdef STRUCT_SIZE_PLAIN_TYPE
+    struct MyStruct
+    {
+       [size=4] mytype p;
+    };
+#endif
+#ifdef STRUCT_COUNT_INVALID_PROP1
+    struct MyStruct
+    {
+       [count=p_count] int* p;
+    };
+#endif
+#ifdef STRUCT_COUNT_INVALID_PROP2
+    struct MyStruct
+    {
+       [count=p_count] int* p;
+       int* p_count;
+    };
+#endif
+#ifdef STRUCT_SIZE_INVALID_PROP1
+    struct MyStruct
+    {
+       [size=p_size] int* p;
+    };
+#endif
+#ifdef STRUCT_SIZE_INVALID_PROP2
+    struct MyStruct
+    {
+       [size=p_size] int* p;
+       int* p_size;
+    };
+#endif
+
 };

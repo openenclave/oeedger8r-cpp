@@ -29,6 +29,8 @@ class Parser
     Token t1_;
     int line_;
     int col_;
+    bool in_struct_;
+    bool in_function_;
 
     std::vector<std::string> includes_;
     std::vector<UserType*> types_;
@@ -72,8 +74,8 @@ class Parser
     void parse_struct_or_union(bool is_struct);
     void parse_trusted();
     void parse_untrusted();
-    Attrs* parse_attributes(bool fcn);
-    Decl* parse_decl(bool fcn = true);
+    Attrs* parse_attributes();
+    Decl* parse_decl();
     void parse_allow_list(bool trusted, const std::string& fname);
     Function* parse_function_decl(bool trusted = true);
     Type* parse_atype();
@@ -94,7 +96,7 @@ class Parser
         const std::vector<Decl*>& decls);
 
     AttrTok check_attribute(Token t);
-    void validate_attributes(Decl* d, bool is_function);
+    void validate_attributes(Decl* d);
     void check_deep_copy_struct_by_value(Function* f);
 
   private:
