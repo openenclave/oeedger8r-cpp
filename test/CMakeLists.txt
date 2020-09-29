@@ -1,6 +1,7 @@
 # Copyright (c) Open Enclave SDK contributors.
 # Licensed under the MIT License.
 
+add_subdirectory(attributes)
 add_subdirectory(basic)
 add_subdirectory(behavior)
 add_subdirectory(call_conflict)

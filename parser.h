@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "ast.h"
@@ -28,6 +29,8 @@ class Parser
     Token t1_;
     int line_;
     int col_;
+    bool in_struct_;
+    bool in_function_;
 
     std::vector<std::string> includes_;
     std::vector<UserType*> types_;
@@ -37,6 +40,19 @@ class Parser
     std::vector<Function*> imported_untrusted_funcs_;
 
     Preprocessor pp_;
+    enum AttrTok
+    {
+        TokIn,
+        TokOut,
+        TokCount,
+        TokSize,
+        TokIsAry,
+        TokIsPtr,
+        TokString,
+        TokWstring,
+        TokUserCheck
+    };
+    std::vector<std::pair<AttrTok, Token>> attr_toks_;
 
   private:
     Token get_preprocessed_token();
@@ -44,7 +60,11 @@ class Parser
     Token peek();
     Token peek1();
 
-    bool print_loc(const std::string& msg_kind);
+    bool print_loc(
+        const std::string& msg_kind,
+        const char* filename,
+        int line,
+        int col);
 
     void parse_include();
     void parse_import();
@@ -54,8 +74,8 @@ class Parser
     void parse_struct_or_union(bool is_struct);
     void parse_trusted();
     void parse_untrusted();
-    Attrs* parse_attributes(bool fcn = true);
-    Decl* parse_decl(bool fcn = true);
+    Attrs* parse_attributes();
+    Decl* parse_decl();
     void parse_allow_list(bool trusted, const std::string& fname);
     Function* parse_function_decl(bool trusted = true);
     Type* parse_atype();
@@ -75,6 +95,8 @@ class Parser
         bool is_function,
         const std::vector<Decl*>& decls);
 
+    AttrTok check_attribute(Token t);
+    void validate_attributes(Decl* d);
     void check_deep_copy_struct_by_value(Function* f);
 
   private:

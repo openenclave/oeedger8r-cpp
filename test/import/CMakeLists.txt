@@ -1,17 +1,17 @@
 # Copyright (c) Open Enclave SDK contributors. Licensed under the MIT License.
 
-function(add_import_test test_name edl pass_re fail_re)
+function (add_import_test test_name edl pass_re fail_re)
   add_test(NAME ${test_name} COMMAND oeedger8r --header-only --search-path
                                      ${CMAKE_CURRENT_SOURCE_DIR} ${edl})
-  if(${fail_re})
+  if (${fail_re})
     set_tests_properties(
       ${test_name} PROPERTIES PASS_REGULAR_EXPRESSION "${pass_re}"
                               FAIL_REGULAR_EXPRESSION "${fail_re}")
-  else()
+  else ()
     set_tests_properties(${test_name} PROPERTIES PASS_REGULAR_EXPRESSION
                                                  "${pass_re}")
-  endif()
-endfunction()
+  endif ()
+endfunction ()
 
 # Test selective import of items from a.edl.
 add_import_test(oeedger8r_selective_import1 b0.edl "Success." "")

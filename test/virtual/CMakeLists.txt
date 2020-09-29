@@ -1,7 +1,6 @@
 # Copyright (c) Open Enclave SDK contributors. Licensed under the MIT License.
 
-
-set (INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 if (WIN32)
   set(COMPILE_FLAGS "")
