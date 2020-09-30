@@ -293,7 +293,9 @@ void iterate_deep_copyable_fields(UserType* user_type, Action&& action)
     }
 }
 
-inline UserType* get_user_type_for_deep_copy(Edl* edl, Decl* d)
+inline UserType* get_user_type_for_deep_copy(
+    const std::vector<UserType*>& types,
+    Decl* d)
 {
     Type* t = d->type_;
     UserType* ut = nullptr;
@@ -308,7 +310,7 @@ inline UserType* get_user_type_for_deep_copy(Edl* edl, Decl* d)
     // EDL types can masquerade as foregin types. Depends on what
     // the parser wants to do.
     if (t->tag_ == Foreign || t->tag_ == Struct)
-        ut = get_user_type(edl, t->name_);
+        ut = get_user_type(types, t->name_);
     if (!ut)
         return nullptr;
 
@@ -317,6 +319,11 @@ inline UserType* get_user_type_for_deep_copy(Edl* edl, Decl* d)
         ut, [&deep_copyable](Decl*) { deep_copyable = true; });
 
     return deep_copyable ? ut : nullptr;
+}
+
+inline UserType* get_user_type_for_deep_copy(Edl* edl, Decl* d)
+{
+    return get_user_type_for_deep_copy(edl->types_, d);
 }
 
 inline const char* path_sep()

@@ -1183,6 +1183,19 @@ void Parser::validate_attributes(Decl* d)
                         atype_str(type).c_str());
                 }
             }
+
+            if (d->type_->tag_ == Ptr)
+            {
+                UserType* ut = get_user_type_for_deep_copy(types_, d);
+                if (ut)
+                {
+                    if (in_function_ && attrs->out_)
+                        ERROR_AT(
+                            itr.second,
+                            "`out' is invalid for user defined type `%s'",
+                            atype_str(type).c_str());
+                }
+            }
         }
 
         else if (itr.first == TokUserCheck)
