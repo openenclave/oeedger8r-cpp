@@ -124,6 +124,9 @@ add_attributes_test(OUT_TYPE1 "unexpected pointer attributes for `int'" "")
 
 add_attributes_test(OUT_TYPE2 "`out' is invalid for plain type `mytype'" "")
 
+add_attributes_test(OUT_USER_TYPE_PTR
+                    "`out' is invalid for user defined type `MyStruct\\*'" "")
+
 # Checks for count/size
 add_attributes_test(
   COUNT_NO_DIR "size/count attributes must be used with pointer direction" "")

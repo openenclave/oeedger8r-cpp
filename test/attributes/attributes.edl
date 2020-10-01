@@ -3,6 +3,14 @@
 
 enclave
 {
+#ifdef OUT_USER_TYPE_PTR
+    struct MyStruct
+    {
+       size_t size;
+       [size=size] int* p;
+    };
+#endif
+
     untrusted
     {
 // Checks for string/wstring
@@ -104,6 +112,9 @@ enclave
 #endif
 #ifdef OUT_TYPE2
         void func([out] mytype x);
+#endif
+#ifdef OUT_USER_TYPE_PTR
+        void func([out] MyStruct* s);
 #endif
 
 // Checks for count/size
