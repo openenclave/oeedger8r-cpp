@@ -246,6 +246,13 @@ enclave
        int* p_count;
     };
 #endif
+#ifdef STRUCT_COUNT_INVALID_PROP3
+    struct MyStruct
+    {
+       size_t p_size;
+       [size=p_size, count=p_count] int* p;
+    };
+#endif
 #ifdef STRUCT_SIZE_INVALID_PROP1
     struct MyStruct
     {
@@ -257,6 +264,13 @@ enclave
     {
        [size=p_size] int* p;
        int* p_size;
+    };
+#endif
+#ifdef STRUCT_SIZE_INVALID_PROP3
+    struct MyStruct
+    {
+       size_t p_count;
+       [size=p_size, count=p_count] int* p;
     };
 #endif
 

@@ -288,7 +288,12 @@ void iterate_deep_copyable_fields(UserType* user_type, Action&& action)
 
     for (Decl* prop : user_type->fields_)
     {
-        if (prop->attrs_)
+        /*
+         * The member is deep copyable only if it has attrs_ and the
+         * attrs->is_size_or_count_ is false (i.e., the member is not used by
+         * size/count attribute).
+         */
+        if (prop->attrs_ && !prop->attrs_->is_size_or_count_)
             action(prop);
     }
 }

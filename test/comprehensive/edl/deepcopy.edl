@@ -131,5 +131,50 @@ enclave {
 
     // Test a real-world scenario.
     public void deepcopy_iovec([in, out, count=n] IOVEC* iov, size_t n);
+
+    // Expect the callee to set a large count value on return.
+    public void deepcopy_countparam_return_large([in, out, count=1] CountParamStruct* s);
+
+    // Expect the callee to set a large size value on return.
+    public void deepcopy_sizeparam_return_large([in, out, count=1] SizeParamStruct* s);
+
+    // Expect the callee to set a large size and count value on return.
+    public void deepcopy_countsizeparam_return_large([in, out, count=1] CountSizeParamStruct* s);
+
+    // Expect the callee to set a large size and count value on return.
+    public void deepcopy_countsize_return_large([in, out, count=1] CountSizeStruct* s);
+
+    public void test_deepcopy_ocalls();
+  };
+
+  untrusted
+  {
+    // Deep copy of one `CountParamStruct` with an embedded array
+    // should take place.
+    void ocall_deepcopy_countparam([in, out, count=1] CountParamStruct* s);
+
+    // Deep copy of one `SizeParamStruct` with an embedded array
+    // should take place.
+    void ocall_deepcopy_sizeparam([in, out, count=1] SizeParamStruct* s);
+
+    // Deep copy of two `CountSizeParamStruct`s each with an embedded
+    // array and different counts should take place.
+    void ocall_deepcopy_countsizeparam([in, out, count=1] CountSizeParamStruct* s);
+
+    // Deep copy of one `CountSizeStruct` each with an embedded
+    // array should take place.
+    void ocall_deepcopy_countsize([in, out, count=1] CountSizeStruct* s);
+
+    // Expect the callee to set a large count value on return.
+    void ocall_deepcopy_countparam_return_large([in, out, count=1] CountParamStruct* s);
+
+    // Expect the callee to set a large count value on return.
+    void ocall_deepcopy_sizeparam_return_large([in, out, count=1] SizeParamStruct* s);
+
+    // Expect the callee to set a large count value on return.
+    void ocall_deepcopy_countsizeparam_return_large([in, out, count=1] CountSizeParamStruct* s);
+
+    // Expect the callee to set a large count value on return.
+    void ocall_deepcopy_countsize_return_large([in, out, count=1] CountSizeStruct* s);
   };
 };

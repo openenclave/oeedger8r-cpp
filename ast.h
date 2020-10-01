@@ -57,6 +57,7 @@ struct Attrs
     bool string_;
     bool wstring_;
     bool user_check_;
+    bool is_size_or_count_;
     Token size_;
     Token count_;
 };

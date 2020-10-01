@@ -92,7 +92,6 @@ class Parser
     void error_size_count(Function* f);
     void check_size_count_decls(
         const std::string& parent_name,
-        bool is_function,
         const std::vector<Decl*>& decls);
 
     AttrTok check_attribute(Token t);

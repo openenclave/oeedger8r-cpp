@@ -47,6 +47,127 @@ std::array<T, 2> init_structs()
     return s;
 }
 
+// Assert that the struct is deep-copied such that `s->ptr` has a copy
+// of `s->count` elements of `data`.
+void ocall_deepcopy_countparam(CountParamStruct* s)
+{
+    OE_TEST(s->count == 7);
+    OE_TEST(s->size == 64);
+    for (size_t i = 0; i < s->count; ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Modify the member used by the size attribute, which should
+    // not affect the value on the caller side.
+    s->count = 5;
+    // Modifiy the member not used by the size/count attributes,
+    // which should affect the value on the caller side.
+    s->size = 200;
+}
+
+void ocall_deepcopy_countparam_return_large(CountParamStruct* s)
+{
+    OE_TEST(s->count == 7);
+    OE_TEST(s->size == 64);
+    for (size_t i = 0; i < s->count; ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Set the value to the member used by the count attribute larger
+    // than the supplied value. Expect to fail.
+    s->count = 100;
+    // Modifiy the member not used by the size/count attributes,
+    // which should affect the value on the caller side.
+    s->size = 200;
+}
+
+// Assert that the struct is deep-copied such that `s->ptr` has a copy
+// of `s->size` bytes of `data`.
+void ocall_deepcopy_sizeparam(SizeParamStruct* s)
+{
+    OE_TEST(s->count == 7);
+    OE_TEST(s->size == 64);
+    for (size_t i = 0; i < s->size / sizeof(uint64_t); ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Modifiy the member not used by the size/count attributes,
+    // which should affect the value on the caller side.
+    s->count = 100;
+    // Modify the member used by the size attribute, which should
+    // not affect the value on the caller side.
+    s->size = 32;
+}
+
+void ocall_deepcopy_sizeparam_return_large(SizeParamStruct* s)
+{
+    OE_TEST(s->count == 7);
+    OE_TEST(s->size == 64);
+    for (size_t i = 0; i < s->size / sizeof(uint64_t); ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Modifiy the member not used by the size/count attributes,
+    // which should affect the value on the caller side.
+    s->count = 100;
+    // Set the value to the member used by the count attribute larger
+    // than the supplied value. Expect to fail.
+    s->size = 200;
+}
+
+// Assert that the struct is deep-copied such that `s->ptr` has a copy
+// of `s->count * s->size` bytes of `data`.
+void ocall_deepcopy_countsizeparam(CountSizeParamStruct* s)
+{
+    OE_TEST(s->count == 8);
+    OE_TEST(s->size == 4);
+    for (size_t i = 0; i < (s->count * s->size) / sizeof(uint64_t); ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Modify the member used by size/count attributes, which should
+    // not affect the value on the caller side.
+    s->count = 4;
+    s->size = 2;
+}
+
+// Assert that the struct is deep-copied such that `s->ptr` has a copy
+// of `s->count * s->size` bytes of `data`.
+void ocall_deepcopy_countsizeparam_return_large(CountSizeParamStruct* s)
+{
+    OE_TEST(s->count == 8);
+    OE_TEST(s->size == 4);
+    for (size_t i = 0; i < (s->count * s->size) / sizeof(uint64_t); ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Set the value to the member used by the count attribute larger
+    // than the supplied value. Expect to fail.
+    s->count = 100;
+    s->size = 200;
+}
+
+void ocall_deepcopy_countsize(CountSizeStruct* s)
+{
+    OE_TEST(s->count == 7);
+    OE_TEST(s->size == 64);
+    for (size_t i = 0; i < 3; ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Modifiy the member not used by the size/count attributes,
+    // which should affect the value on the caller side.
+    s->count = 5;
+    s->size = 32;
+}
+
+void ocall_deepcopy_countsize_return_large(CountSizeStruct* s)
+{
+    OE_TEST(s->count == 7);
+    OE_TEST(s->size == 64);
+    for (size_t i = 0; i < 3; ++i)
+        OE_TEST(s->ptr[i] == data[i]);
+
+    // Modifiy the member not used by the size/count attributes,
+    // which should affect the value on the caller side.
+    // Setting larger value is allowed in this case.
+    s->count = 100;
+    s->size = 200;
+}
+
 void test_deepcopy_edl_ecalls(oe_enclave_t* enclave)
 {
     {
@@ -68,7 +189,12 @@ void test_deepcopy_edl_ecalls(oe_enclave_t* enclave)
     {
         auto s = init_struct<CountParamStruct>();
         OE_TEST(deepcopy_countparam(enclave, &s) == OE_OK);
+        // The members used by size/count attributes is expected to
+        // be consistent even if the callee modified them.
         OE_TEST(s.count == 7);
+        // The members not used by size/count attributes is expected to
+        // match the value set by the callee.
+        OE_TEST(s.size == 200);
         test_struct(s, s.count);
     }
 
@@ -82,12 +208,21 @@ void test_deepcopy_edl_ecalls(oe_enclave_t* enclave)
         auto s = init_struct<CountSizeStruct>();
         OE_TEST(deepcopy_countsize(enclave, &s) == OE_OK);
         test_struct(s, 3);
+        // The members not used by size/count attributes is expected to
+        // match the value set by the callee.
+        OE_TEST(s.count == 5);
+        OE_TEST(s.size == 32);
     }
 
     {
         auto s = init_struct<SizeParamStruct>();
         OE_TEST(deepcopy_sizeparam(enclave, &s) == OE_OK);
+        // The members used by size/count attributes is expected to
+        // be consistent even if the callee modified them.
         OE_TEST(s.size == 64);
+        // The members not used by size/count attributes is expected to
+        // match the value set by the callee.
+        OE_TEST(s.count == 100);
         test_struct(s, s.size / sizeof(uint64_t));
     }
 
@@ -96,6 +231,8 @@ void test_deepcopy_edl_ecalls(oe_enclave_t* enclave)
         s.count = 8;
         s.size = 4;
         OE_TEST(deepcopy_countsizeparam(enclave, &s) == OE_OK);
+        // The members used by size/count attributes is expected to
+        // be consistent even if the callee modified them.
         OE_TEST(s.count == 8);
         OE_TEST(s.size == 4);
         test_struct(s, (s.count * s.size) / sizeof(uint64_t));
@@ -210,6 +347,38 @@ void test_deepcopy_edl_ecalls(oe_enclave_t* enclave)
 
         OE_TEST(deepcopy_iovec(enclave, iov, OE_COUNTOF(iov)) == OE_OK);
         OE_TEST(memcmp(buf0, "0000000", 8) == 0);
+    }
+
+    {
+        auto s = init_struct<CountParamStruct>();
+        OE_TEST(deepcopy_countparam_return_large(enclave, &s) == OE_FAILURE);
+    }
+
+    {
+        auto s = init_struct<SizeParamStruct>();
+        OE_TEST(deepcopy_sizeparam_return_large(enclave, &s) == OE_FAILURE);
+    }
+
+    {
+        auto s = init_struct<CountSizeParamStruct>();
+        s.count = 8;
+        s.size = 4;
+        OE_TEST(
+            deepcopy_countsizeparam_return_large(enclave, &s) == OE_FAILURE);
+    }
+
+    {
+        auto s = init_struct<CountSizeStruct>();
+        OE_TEST(deepcopy_countsize_return_large(enclave, &s) == OE_OK);
+        test_struct(s, 3);
+        // The members not used by size/count attributes is expected to
+        // match the value set by the callee.
+        OE_TEST(s.count == 100);
+        OE_TEST(s.size == 200);
+    }
+
+    {
+        OE_TEST(test_deepcopy_ocalls(enclave) == OE_OK);
     }
 
     printf("=== test_deepcopy_edl_ecalls passed\n");
