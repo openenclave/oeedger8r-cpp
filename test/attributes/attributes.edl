@@ -67,11 +67,17 @@ enclave
 #ifdef ISARY_TYPE2
         void func([in, isary] int* obj);
 #endif
+#ifdef ISARY_TYPE3
+        void func([in, isary] MyStruct* obj);
+#endif
 #ifdef ISPTR_TYPE1
         void func([in, isptr] int obj);
 #endif
 #ifdef ISPTR_TYPE2
         void func([in, isptr] int* obj);
+#endif
+#ifdef ISPTR_TYPE3
+        void func([in, isptr] MyStruct* obj);
 #endif
 
 // Checks for user_check
