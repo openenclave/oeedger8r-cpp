@@ -486,7 +486,27 @@ class WEmitter
 
             for (Decl* field : ut->fields_)
             {
-                // TODO: Do not copy over size.
+                /*
+                 * We currently do not update the struct member based on the
+                 * value set by the callee if the member is used by the size or
+                 * count attribute. However, we still report an error if the
+                 * callee sets a value that is larger than the supplied one.
+                 * This warns the caller that the callee behaves unexpectedly.
+                 */
+                if (field->attrs_ && field->attrs_->is_size_or_count_)
+                {
+                    std::string lhs_val =
+                        expr + "[" + idx + "]." + field->name_;
+                    std::string rhs_val = "_rhs[" + idx + "]." + field->name_;
+                    out() << indent + "        " + "if (" + lhs_val + " < " +
+                                 rhs_val + ")"
+                          << indent + "        {"
+                          << indent + "            _result = OE_FAILURE;"
+                          << indent + "            goto done;"
+                          << indent + "        }";
+                    continue;
+                }
+
                 if (field->type_->tag_ != Ptr || !field->attrs_ ||
                     field->attrs_->user_check_)
                 {
@@ -500,7 +520,8 @@ class WEmitter
             for (Decl* field : ut->fields_)
             {
                 if (field->type_->tag_ != Ptr || !field->attrs_ ||
-                    field->attrs_->user_check_)
+                    field->attrs_->user_check_ ||
+                    field->attrs_->is_size_or_count_)
                     continue;
 
                 std::string prop_val = expr + "[" + idx + "]." + field->name_;

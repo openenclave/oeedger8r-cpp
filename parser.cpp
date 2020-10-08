@@ -492,7 +492,7 @@ void Parser::parse_struct_or_union(bool is_struct)
             expect(";");
     }
     append_type(type);
-    check_size_count_decls(type->name_, false, type->fields_);
+    check_size_count_decls(type->name_, type->fields_);
     expect("}");
     expect(";");
     in_struct_ = false;
@@ -605,7 +605,7 @@ Function* Parser::parse_function_decl(bool trusted)
 
     warn_non_portable(f);
     error_size_count(f);
-    check_size_count_decls(f->name_, true, f->params_);
+    check_size_count_decls(f->name_, f->params_);
     check_deep_copy_struct_by_value(f);
     in_function_ = false;
     return f;
@@ -662,6 +662,7 @@ Attrs* Parser::parse_attributes()
 
     next();
     Attrs* attrs = new Attrs{false,
+                             false,
                              false,
                              false,
                              false,
@@ -926,15 +927,20 @@ void Parser::error_size_count(Function* f)
     }
 }
 
-static Token _get_size_or_count_attr(Decl* d)
+static std::vector<Token> _get_size_or_count_attr_tokens(Decl* d)
 {
+    std::vector<Token> tokens;
+
     if (d->attrs_)
     {
-        return !d->attrs_->size_.is_empty() ? d->attrs_->size_
-                                            : d->attrs_->count_;
+        if (!d->attrs_->size_.is_empty())
+            tokens.push_back(d->attrs_->size_);
+
+        if (!d->attrs_->count_.is_empty())
+            tokens.push_back(d->attrs_->count_);
     }
 
-    return Token::empty();
+    return tokens;
 }
 
 static Decl* _get_decl(const std::vector<Decl*>& decls, const std::string& name)
@@ -949,62 +955,106 @@ static Decl* _get_decl(const std::vector<Decl*>& decls, const std::string& name)
 
 void Parser::check_size_count_decls(
     const std::string& parent_name,
-    bool is_function,
     const std::vector<Decl*>& decls)
 {
     for (Decl* d : decls)
     {
-        Token t = _get_size_or_count_attr(d);
-        if (t.is_empty() || !t.is_name())
-            continue;
-        // TODO: Correct filename.
-        line_ = t.line_;
-        col_ = t.col_;
-
-        Decl* sc_decl = _get_decl(decls, t);
-        if (sc_decl == nullptr)
-            ERROR(
-                "could not find declaration for '%s'.",
-                static_cast<std::string>(t).c_str());
-
-        Type* ty = sc_decl->type_;
-        if (ty->tag_ == Const)
-            ty = ty->t_;
-
-        if (sc_decl->dims_ && !sc_decl->dims_->empty())
-            ERROR("size/count has invalid type.");
-
-        switch (ty->tag_)
+        std::vector<Token> tokens = _get_size_or_count_attr_tokens(d);
+        for (Token& t : tokens)
         {
-            case Unsigned:
+            if (t.is_empty() || !t.is_name())
                 continue;
 
-            case Char:
-            case Short:
-            case Int:
-            case Long:
-            case LLong:
-            case Int8:
-            case Int16:
-            case Int32:
-            case Int64:
-            {
-                fprintf(
-                    stderr,
-                    "Warning: %s '%s': Size or count parameter '%s' should not "
-                    "be signed.\n",
-                    is_function ? "Function" : "struct",
-                    parent_name.c_str(),
+            Decl* sc_decl = _get_decl(decls, t);
+            if (sc_decl == nullptr)
+                ERROR_AT(
+                    t,
+                    "could not find declaration for '%s'.",
                     static_cast<std::string>(t).c_str());
-                continue;
+
+            /*
+             * Setting the is_size_or_count_ attribute for the user-defined
+             * struct only, which is relevant to the deep-copy support.
+             */
+            if (in_struct_)
+            {
+                /*
+                 * The struct member used by the size or count attribute will
+                 * not have attrs_ during parse_attributes(). Allocate a new
+                 * one.
+                 */
+                if (sc_decl->attrs_ == nullptr)
+                    sc_decl->attrs_ = new Attrs{false,
+                                                false,
+                                                false,
+                                                false,
+                                                false,
+                                                false,
+                                                false,
+                                                false,
+                                                false,
+                                                Token::empty(),
+                                                Token::empty()};
+                /*
+                 * We can only be sure if a struct member is used by the size or
+                 * count attribute after parsing; i.e., we cannot decide it
+                 * during parsing if the member is defined after the size/count
+                 * annotation. Therefore, we set the is_size_or_count_ attribute
+                 * here, which prevents the member being modified by the
+                 * callee during the deep copy.
+                 */
+                sc_decl->attrs_->is_size_or_count_ = true;
             }
 
-            case Ptr:
-            case Struct:
-            case Union:
-                ERROR("size/count has invalid type.");
-            default:
-                break;
+            /* Validate the _is_size_or_count is correctly set for the struct.
+             */
+            if (in_struct_ && !sc_decl->attrs_ &&
+                !sc_decl->attrs_->is_size_or_count_)
+                ERROR_AT(
+                    t,
+                    "unexpected error with '%s'.",
+                    static_cast<std::string>(t).c_str());
+
+            Type* ty = sc_decl->type_;
+            if (ty->tag_ == Const)
+                ty = ty->t_;
+
+            if (sc_decl->dims_ && !sc_decl->dims_->empty())
+                ERROR_AT(t, "size/count has invalid type.");
+
+            switch (ty->tag_)
+            {
+                case Unsigned:
+                    continue;
+
+                case Char:
+                case Short:
+                case Int:
+                case Long:
+                case LLong:
+                case Int8:
+                case Int16:
+                case Int32:
+                case Int64:
+                {
+                    fprintf(
+                        stderr,
+                        "Warning: %s '%s': Size or count parameter '%s' should "
+                        "not "
+                        "be signed.\n",
+                        in_function_ ? "Function" : "struct",
+                        parent_name.c_str(),
+                        static_cast<std::string>(t).c_str());
+                    continue;
+                }
+
+                case Ptr:
+                case Struct:
+                case Union:
+                    ERROR_AT(t, "size/count has invalid type.");
+                default:
+                    break;
+            }
         }
     }
 }
