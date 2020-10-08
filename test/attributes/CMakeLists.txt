@@ -77,12 +77,22 @@ add_attributes_test(
   "`isary' attribute is only valid for user defined type, not for `int\\*'" "")
 
 add_attributes_test(
+  ISARY_TYPE3
+  "`isary' attribute is only valid for user defined type, not for `MyStruct\\*'"
+  "")
+
+add_attributes_test(
   ISPTR_TYPE1
   "`isptr' attribute is only valid for user defined type, not for `int'" "")
 
 add_attributes_test(
   ISPTR_TYPE2
   "`isptr' attribute is only valid for user defined type, not for `int\\*'" "")
+
+add_attributes_test(
+  ISPTR_TYPE3
+  "`isptr' attribute is only valid for user defined type, not for `MyStruct\\*'"
+  "")
 
 # Checks for user_check
 add_attributes_test(
