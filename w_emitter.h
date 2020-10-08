@@ -559,23 +559,21 @@ class WEmitter
                 std::string size = psize(p, "_args.");
                 std::string cmd = p->attrs_->inout_ ? "OE_READ_IN_OUT_PARAM"
                                                     : "OE_READ_OUT_PARAM";
-                if (p->attrs_->string_ || p->attrs_->wstring_)
-                {
-                    out() << "    " + check +
-                                 (p->attrs_->wstring_ ? "_WIDE(" : "(") +
-                                 "_output_buffer + _output_buffer_offset, "
-                                 "_args." +
-                                 p->name_ + "_len);";
-                }
                 UserType* ut = get_user_type_for_deep_copy(edl_, p);
                 if (!ut)
                 {
                     out() << "    " + cmd + "(" + p->name_ + ", (size_t)(" +
                                  size + "));";
-                    continue;
+                }
+                if (p->attrs_->string_ || p->attrs_->wstring_)
+                {
+                    out() << "    " + check +
+                                 (p->attrs_->wstring_ ? "_WIDE(" : "(") +
+                                 p->name_ + ", _args." + p->name_ + "_len);";
                 }
 
-                unmarshal_deep_copy(p, "", "    ", cmd, 1);
+                if (ut)
+                    unmarshal_deep_copy(p, "", "    ", cmd, 1);
             }
         }
         if (empty)
