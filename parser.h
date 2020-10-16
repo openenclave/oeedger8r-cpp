@@ -31,6 +31,7 @@ class Parser
     int col_;
     bool in_struct_;
     bool in_function_;
+    bool experimental_;
 
     std::vector<std::string> includes_;
     std::vector<UserType*> types_;
@@ -106,7 +107,8 @@ class Parser
     Parser(
         const std::string& filename,
         const std::vector<std::string>& searchpaths,
-        const std::vector<std::string>& defines);
+        const std::vector<std::string>& defines,
+        bool experimental);
     ~Parser();
 
     Edl* parse();

@@ -30,7 +30,8 @@ static bool _is_file(const std::string& path)
 Parser::Parser(
     const std::string& filename,
     const std::vector<std::string>& searchpaths,
-    const std::vector<std::string>& defines)
+    const std::vector<std::string>& defines,
+    bool experimental)
     : filename_(filename),
       basename_(),
       searchpaths_(searchpaths),
@@ -41,6 +42,7 @@ Parser::Parser(
       col_(1),
       in_struct_(false),
       in_function_(false),
+      experimental_(experimental),
       includes_(),
       types_(),
       trusted_funcs_(),
@@ -292,7 +294,11 @@ Edl* Parser::parse_import_file()
     Edl* edl = nullptr;
     if (pp_.is_included())
     {
-        Parser p(std::string(t.start_ + 1, t.end_ - 1), searchpaths_, defines_);
+        Parser p(
+            std::string(t.start_ + 1, t.end_ - 1),
+            searchpaths_,
+            defines_,
+            experimental_);
         edl = p.parse();
     }
     return edl;
@@ -1239,10 +1245,14 @@ void Parser::validate_attributes(Decl* d)
                 UserType* ut = get_user_type_for_deep_copy(types_, d);
                 if (ut)
                 {
-                    if (in_function_ && attrs->out_)
+                    /* Deep-copy out parameter is currently an experimental
+                     * feature. */
+                    if (!experimental_ && in_function_ && attrs->out_ &&
+                        !attrs->inout_)
                         ERROR_AT(
                             itr.second,
-                            "`out' is invalid for user defined type `%s'",
+                            "`out' for user defined type `%s' requires the "
+                            "--experimental option",
                             atype_str(type).c_str());
                 }
             }

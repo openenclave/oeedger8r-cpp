@@ -14,6 +14,7 @@ class WEmitter
     Edl* edl_;
     std::ofstream& file_;
     bool ecall_;
+    bool has_deep_copy_out_;
 
   public:
     typedef WEmitter& R;
@@ -52,7 +53,7 @@ class WEmitter
             else
             {
                 alloc_fcn = "oe_malloc";
-                free_fcn = "free";
+                free_fcn = "oe_free";
                 call = "oe_switchless_call_enclave_function";
             }
         }
@@ -67,7 +68,7 @@ class WEmitter
             else
             {
                 alloc_fcn = "oe_malloc";
-                free_fcn = "free";
+                free_fcn = "oe_free";
                 call = "oe_call_enclave_function";
             }
         }
@@ -76,6 +77,7 @@ class WEmitter
     void emit(Function* f, bool ecall, const std::string& prefix = "")
     {
         ecall_ = ecall;
+        has_deep_copy_out_ = has_deep_copy_out(edl_, f);
         std::string alloc_fcn;
         std::string free_fcn;
         std::string call;
@@ -114,8 +116,14 @@ class WEmitter
               << "    uint8_t* _output_buffer = NULL;"
               << "    size_t _input_buffer_offset = 0;"
               << "    size_t _output_buffer_offset = 0;"
-              << "    size_t _output_bytes_written = 0;"
-              << ""
+              << "    size_t _output_bytes_written = 0;";
+        if (has_deep_copy_out_)
+        {
+            out() << "    uint8_t* _deepcopy_out_buffer = NULL;"
+                  << "    size_t _deepcopy_out_buffer_size = 0;"
+                  << "    size_t _deepcopy_out_buffer_offset = 0;";
+        }
+        out() << ""
               << "    /* Fill marshalling struct. */"
               << "    memset(&_args, 0, sizeof(_args));";
         fill_marshalling_struct(f);
@@ -174,7 +182,7 @@ class WEmitter
               << "    /* Check if the call succeeded. */"
               << "    if ((_result = _pargs_out->_result) != OE_OK)"
               << "        goto done;"
-              << "    "
+              << ""
               << "    /* Currently exactly _output_buffer_size bytes must be "
                  "written. */"
               << "    if (_output_bytes_written != _output_buffer_size)"
@@ -182,22 +190,53 @@ class WEmitter
               << "        _result = OE_FAILURE;"
               << "        goto done;"
               << "    }"
-              << "    "
+              << ""
               << "    /* Unmarshal return value and out, in-out parameters. */";
         if (f->rtype_->tag_ != Void)
             out() << "    *_retval = _pargs_out->_retval;";
         else
             out() << "    /* No return value. */";
+        out() << "";
+        if (has_deep_copy_out_)
+        {
+            out()
+                << "    _deepcopy_out_buffer = _pargs_out->deepcopy_out_buffer;"
+                << "    _deepcopy_out_buffer_size = "
+                   "_pargs_out->deepcopy_out_buffer_size;";
+            if (gen_t())
+                out() << "    if (_deepcopy_out_buffer && "
+                         "_deepcopy_out_buffer_size && "
+                      << "        !oe_is_within_enclave(_deepcopy_out_buffer, "
+                         "_deepcopy_out_buffer_size))"
+                      << "    {"
+                      << "        _result = OE_FAILURE;"
+                      << "        goto done;"
+                      << "    }";
+            out() << "";
+        }
         unmarshal_outputs(f);
         out() << "";
+        if (has_deep_copy_out_)
+            out() << "    if (_deepcopy_out_buffer_offset != "
+                     "_deepcopy_out_buffer_size)"
+                  << "    {"
+                  << "        _result = OE_FAILURE;"
+                  << "        goto done;"
+                  << "    }"
+                  << "";
         propagate_errno(f);
         out() << "    _result = OE_OK;"
               << ""
               << "done:"
               << "    if (_buffer)"
               << "        " + free_fcn + "(_buffer);";
-        if (!gen_t())
-            out() << "";
+        out() << "";
+        if (has_deep_copy_out_)
+        {
+            out() << "    if (_deepcopy_out_buffer)"
+                  << "        oe_free(_deepcopy_out_buffer);"
+                  << "";
+        }
         out() << "    return _result;"
               << "}"
               << "";
@@ -248,8 +287,6 @@ class WEmitter
             else
                 out() << lhs + p->name_ + ";";
         }
-        if (f->params_.empty())
-            out() << "    ";
     }
 
     void add_size_deep_copy(
@@ -319,8 +356,10 @@ class WEmitter
                   << "        OE_ADD_SIZE(" + buffer_size + ", " + size + ");";
             empty = false;
 
+            /* Skip the nested pointers if the parameter is not
+             * deep-copyable or has the out-only attribute. */
             UserType* ut = get_user_type_for_deep_copy(edl_, p);
-            if (!ut)
+            if (!ut || (p->attrs_->out_ && !p->attrs_->inout_))
                 continue;
 
             std::string count = count_attr_str(p->attrs_->count_, "_args.");
@@ -460,11 +499,11 @@ class WEmitter
         std::string expr = parent_expr + p->name_;
         UserType* ut = get_user_type_for_deep_copy(edl_, p);
         if (!ut)
-        {
             return;
-        }
-        // Deep copied structure. Unmarshal individual fields.
 
+        /*
+         * Deep copied structure. Unmarshal individual fields.
+         */
         out() << indent + "if (" + expr + ")" << indent + "{";
         {
             if (!parent_expr.empty())
@@ -484,8 +523,12 @@ class WEmitter
                          " < " + count + "; " + idx + "++)"
                   << indent + "    {";
 
+            /* First iteration: Find struct members that are not user-defined
+             * pointers. */
             for (Decl* field : ut->fields_)
             {
+                std::string lhs_val = expr + "[" + idx + "]." + field->name_;
+                std::string rhs_val = "_rhs[" + idx + "]." + field->name_;
                 /*
                  * We currently do not update the struct member based on the
                  * value set by the callee if the member is used by the size or
@@ -495,9 +538,6 @@ class WEmitter
                  */
                 if (field->attrs_ && field->attrs_->is_size_or_count_)
                 {
-                    std::string lhs_val =
-                        expr + "[" + idx + "]." + field->name_;
-                    std::string rhs_val = "_rhs[" + idx + "]." + field->name_;
                     out() << indent + "        " + "if (" + lhs_val + " < " +
                                  rhs_val + ")"
                           << indent + "        {"
@@ -510,13 +550,13 @@ class WEmitter
                 if (field->type_->tag_ != Ptr || !field->attrs_ ||
                     field->attrs_->user_check_)
                 {
-                    std::string prop_val =
-                        expr + "[" + idx + "]." + field->name_;
-                    out() << indent + "        " + prop_val + " = _rhs[" + idx +
-                                 "]." + field->name_ + ";";
+                    out() << indent + "        " + lhs_val + " = " + rhs_val +
+                                 ";";
                 }
             }
 
+            /* Second iteration: Find struct members that are user-defined
+             * pointers. */
             for (Decl* field : ut->fields_)
             {
                 if (field->type_->tag_ != Ptr || !field->attrs_ ||
@@ -547,6 +587,79 @@ class WEmitter
         out() << indent + "}";
     }
 
+    void unserialize_pointers_deep_copy(
+        const std::string& parent_condition,
+        const std::string& parent_expr,
+        const std::string& cmd,
+        Decl* parent_prop,
+        int level,
+        std::string indent = "    ")
+    {
+        UserType* ut = get_user_type_for_deep_copy(edl_, parent_prop);
+        if (!ut)
+            return;
+        iterate_deep_copyable_fields(ut, [&](Decl* prop) {
+            std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
+            std::string expr = parent_expr + op + prop->name_;
+            std::string size = psize(prop, parent_expr + op);
+            std::string cond = parent_condition + " && " + expr;
+            std::string mt = mtype_str(prop);
+            out() << indent + "if (" + cond + ")"
+                  << indent + "    " + cmd + "(" + expr + ", " + size + ", " +
+                         mt + ");";
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, prop);
+            if (!ut)
+                return;
+
+            std::string count =
+                count_attr_str(prop->attrs_->count_, parent_expr + op);
+
+            if (count == "1" || count == "")
+            {
+                unserialize_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent);
+            }
+            else
+            {
+                std::string idx = "_i_" + to_str(level);
+                std::string expr =
+                    parent_expr + op + prop->name_ + "[" + idx + "]";
+                out() << indent + "for (size_t " + idx + " = 0; " + idx +
+                             " < " + count + "; " + idx + "++)"
+                      << indent + "{";
+                std::string cond =
+                    parent_condition + " && " + parent_expr + op + prop->name_;
+                unserialize_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent + "    ");
+                out() << indent + "}";
+            }
+        });
+    }
+
+    void unmarshal_deep_copy_out(Decl* p)
+    {
+        std::string cmd = "OE_SET_DEEPCOPY_OUT_PARAM";
+        std::string count = count_attr_str(p->attrs_->count_, "_");
+        std::string mt = mtype_str(p);
+
+        if (count == "1" || count == "")
+        {
+            std::string cond = p->name_;
+            std::string expr = p->name_;
+            unserialize_pointers_deep_copy(cond, expr, cmd, p, 2, "    ");
+        }
+        else
+        {
+            std::string cond = p->name_;
+            std::string expr = p->name_ + "[_i_1]";
+            out() << "    for (size_t _i_1 = 0; _i_1 < " + count + "; _i_1++)"
+                  << "    {";
+            unserialize_pointers_deep_copy(cond, expr, cmd, p, 2, "        ");
+            out() << "    }";
+        }
+    }
+
     void unmarshal_outputs(Function* f)
     {
         std::string check = "OE_CHECK_NULL_TERMINATOR";
@@ -573,7 +686,16 @@ class WEmitter
                 }
 
                 if (ut)
-                    unmarshal_deep_copy(p, "", "    ", cmd, 1);
+                {
+                    if (p->attrs_->inout_)
+                        unmarshal_deep_copy(p, "", "    ", cmd, 1);
+                    else
+                    {
+                        out() << "    OE_READ_OUT_PARAM(" + p->name_ +
+                                     ", (size_t)(" + size + "));";
+                        unmarshal_deep_copy_out(p);
+                    }
+                }
             }
         }
         if (empty)

@@ -331,6 +331,23 @@ inline UserType* get_user_type_for_deep_copy(Edl* edl, Decl* d)
     return get_user_type_for_deep_copy(edl->types_, d);
 }
 
+inline bool has_deep_copy_out(Edl* edl, Function* f)
+{
+    bool result = false;
+
+    for (Decl* p : f->params_)
+    {
+        UserType* ut = get_user_type_for_deep_copy(edl, p);
+        if (ut && p->attrs_ && p->attrs_->out_ && !p->attrs_->inout_)
+        {
+            result = true;
+            break;
+        }
+    }
+
+    return result;
+}
+
 inline const char* path_sep()
 {
 #if _WIN32

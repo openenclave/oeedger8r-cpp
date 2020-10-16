@@ -14,6 +14,7 @@ class FEmitter
     Edl* edl_;
     std::ofstream& file_;
     bool ecall_;
+    bool has_deep_copy_out_;
 
   public:
     typedef FEmitter& R;
@@ -39,6 +40,7 @@ class FEmitter
     void emit(Function* f, bool ecall)
     {
         ecall_ = ecall;
+        has_deep_copy_out_ = has_deep_copy_out(edl_, f);
         std::string pfx = ecall_ ? "ecall_" : "ocall_";
         std::string args_t = f->name_ + "_args_t";
         out() << "static void " + pfx + f->name_ + "("
@@ -56,8 +58,15 @@ class FEmitter
               << "    " + args_t + "* pargs_in = (" + args_t + "*)input_buffer;"
               << "    " + args_t + "* pargs_out = (" + args_t +
                      "*)output_buffer;"
-              << ""
-              << "    size_t input_buffer_offset = 0;"
+              << "";
+        if (has_deep_copy_out_)
+        {
+            out() << "    uint8_t* _deepcopy_out_buffer = NULL;"
+                  << "    size_t _deepcopy_out_buffer_offset = 0;"
+                  << "    size_t _deepcopy_out_buffer_size = 0;"
+                  << "";
+        }
+        out() << "    size_t input_buffer_offset = 0;"
               << "    size_t output_buffer_offset = 0;"
               << "    OE_ADD_SIZE(input_buffer_offset, sizeof(*pargs_in));"
               << "    OE_ADD_SIZE(output_buffer_offset, sizeof(*pargs_out));"
@@ -71,7 +80,7 @@ class FEmitter
         out() << "    /* Set out and in-out pointers. */"
               << "    /* In-out parameters are copied to output buffer. */";
         set_out_in_out_pointers(f);
-        if (ecall)
+        if (ecall_)
         {
             out() << "    /* Check that in/in-out strings are null terminated. "
                      "*/";
@@ -82,12 +91,66 @@ class FEmitter
         }
         out() << "    /* Call user function. */";
         call_user_function(f);
+        if (has_deep_copy_out_)
+        {
+            out() << "    /* Compute the size for the deep-copy out buffer. */";
+            compute_buffer_size_deep_copy_out(f);
+            out() << ""
+                  << "    if (_deepcopy_out_buffer_size)"
+                  << "    {"
+                  << "        _deepcopy_out_buffer = (uint8_t*) "
+                     "oe_malloc(_deepcopy_out_buffer_size);"
+                  << "        if (!_deepcopy_out_buffer)"
+                  << "        {"
+                  << "            _result = OE_OUT_OF_MEMORY;"
+                  << "            goto done;"
+                  << "        }"
+                  << "    }"
+                  << "";
+            out() << "    /* Serialize the deep-copied content into the "
+                     "buffer. */";
+            serialize_buffer_deep_copy_out(f);
+            out()
+                << "    if (_deepcopy_out_buffer_offset != "
+                   "_deepcopy_out_buffer_size)"
+                << "    {"
+                << "        _result = OE_FAILURE;"
+                << "        goto done;"
+                << "    }"
+                << ""
+                << "    /* Set the _deepcopy_out_buffer and "
+                   "_deepcopy_out_buffer as part of pargs_out. */"
+                << "    pargs_out->deepcopy_out_buffer = _deepcopy_out_buffer;"
+                << "    pargs_out->deepcopy_out_buffer_size = "
+                   "_deepcopy_out_buffer_size;"
+                << "";
+        }
+        else
+            out() << "    /* There is no deep-copyable out parameter. */"
+                  << "    pargs_out->deepcopy_out_buffer = NULL;"
+                  << "    pargs_out->deepcopy_out_buffer_size = 0;"
+                  << "";
         propagate_errno(f);
         out() << "    /* Success. */"
               << "    _result = OE_OK;"
               << "    *output_bytes_written = output_buffer_offset;"
               << ""
               << "done:";
+        if (has_deep_copy_out_)
+        {
+            out() << "    /* Free pargs_out->deepcopy_out_buffer on failure. */"
+                  << "    if (_result != OE_OK)"
+                  << "    {"
+                  << "        oe_free(pargs_out->deepcopy_out_buffer);"
+                  << "        pargs_out->deepcopy_out_buffer = NULL;"
+                  << "        pargs_out->deepcopy_out_buffer_size = 0;"
+                  << "    }"
+                  << "";
+            out() << "    /* Free nested buffers allocated by the user "
+                     "function. */";
+            free_deep_copy_out(f, "pargs_in->", "pargs_in->", "    ");
+            out() << "";
+        }
         write_result();
         out() << "}"
               << "";
@@ -221,6 +284,7 @@ class FEmitter
         {
             if (!p->attrs_ || !(p->attrs_->out_ || p->attrs_->inout_))
                 continue;
+
             std::string size = psize(p, "pargs_in->");
             std::string cmd = (p->attrs_->inout_)
                                   ? "OE_COPY_AND_SET_IN_OUT_POINTER"
@@ -230,8 +294,10 @@ class FEmitter
                          mtype_str(p) + ");";
             empty = false;
 
+            /* Skip on setting nested pointers if the parameter is not
+             * deep-copyable or has the out-only attribute. */
             UserType* ut = get_user_type_for_deep_copy(edl_, p);
-            if (!ut)
+            if (!ut || (p->attrs_->out_ && !p->attrs_->inout_))
                 continue;
 
             std::string count = count_attr_str(p->attrs_->count_, "pargs_in->");
@@ -258,6 +324,89 @@ class FEmitter
         if (empty)
             out() << "    /* There were no out nor in-out parameters. */";
         out() << "";
+    }
+
+    void add_size_deep_copy(
+        const std::string& parent_condition,
+        const std::string& parent_expr,
+        const std::string& buffer_size,
+        Decl* parent_prop,
+        int level,
+        std::string indent = "    ")
+    {
+        UserType* ut = get_user_type_for_deep_copy(edl_, parent_prop);
+        if (!ut)
+            return;
+        iterate_deep_copyable_fields(ut, [&](Decl* prop) {
+            std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
+            std::string expr = parent_expr + op + prop->name_;
+            std::string size = psize(prop, parent_expr + op);
+            std::string cond = parent_condition + " && " + expr;
+            out() << indent + "if (" + cond + ")"
+                  << indent + "    OE_ADD_SIZE(" + buffer_size + ", " + size +
+                         ");";
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, prop);
+            if (!ut)
+                return;
+
+            std::string count =
+                count_attr_str(prop->attrs_->count_, parent_expr + op);
+
+            if (count == "1" || count == "")
+            {
+                add_size_deep_copy(
+                    cond, expr, buffer_size, prop, level + 1, indent);
+            }
+            else
+            {
+                std::string idx = "_i_" + to_str(level);
+                std::string expr =
+                    parent_expr + op + prop->name_ + "[" + idx + "]";
+                out() << indent + "for (size_t " + idx + " = 0; " + idx +
+                             " < " + count + "; " + idx + "++)"
+                      << indent + "{";
+                add_size_deep_copy(
+                    cond, expr, buffer_size, prop, level + 1, indent + "    ");
+                out() << indent + "}";
+            }
+        });
+    }
+
+    void compute_buffer_size_deep_copy_out(Function* f)
+    {
+        std::string buffer_size = "_deepcopy_out_buffer_size";
+        std::string prefix = "pargs_in->";
+        for (Decl* p : f->params_)
+        {
+            if (!p->attrs_)
+                continue;
+
+            /* Skip the nested pointers if the parameter is neither
+             * deep-copyable nor has the out-only attribute. */
+            UserType* ut = get_user_type_for_deep_copy(edl_, p);
+            if (!ut || !p->attrs_->out_ || p->attrs_->inout_)
+                continue;
+
+            std::string count = count_attr_str(p->attrs_->count_, prefix);
+
+            if (count == "1" || count == "")
+            {
+                std::string cond = prefix + p->name_;
+                std::string expr = prefix + p->name_;
+                add_size_deep_copy(cond, expr, buffer_size, p, 2, "    ");
+            }
+            else
+            {
+                std::string cond = prefix + p->name_;
+                std::string expr = prefix + p->name_ + "[_i_1]";
+                out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
+                             "; _i_1++)"
+                      << "    {";
+                add_size_deep_copy(cond, expr, buffer_size, p, 2, "        ");
+                out() << "    }";
+            }
+        }
     }
 
     void check_null_terminators(Function* f)
@@ -309,6 +458,166 @@ class FEmitter
         if (idx == 0)
             out() << "    );";
         out() << "";
+    }
+
+    void serialize_pointers_deep_copy(
+        const std::string& parent_condition,
+        const std::string& parent_expr,
+        const std::string& cmd,
+        Decl* parent_prop,
+        int level,
+        std::string indent = "    ")
+    {
+        UserType* ut = get_user_type_for_deep_copy(edl_, parent_prop);
+        if (!ut)
+            return;
+        iterate_deep_copyable_fields(ut, [&](Decl* prop) {
+            std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
+            std::string expr = parent_expr + op + prop->name_;
+            std::string size = psize(prop, parent_expr + op);
+            std::string cond = parent_condition + " && " + expr;
+            out() << indent + "if (" + cond + ")"
+                  << indent + "    " + cmd + "(" + expr + ", " + size + ");";
+
+            UserType* ut = get_user_type_for_deep_copy(edl_, prop);
+            if (!ut)
+                return;
+
+            std::string count =
+                count_attr_str(prop->attrs_->count_, parent_expr + op);
+
+            if (count == "1" || count == "")
+            {
+                serialize_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent);
+            }
+            else
+            {
+                std::string idx = "_i_" + to_str(level);
+                std::string expr =
+                    parent_expr + op + prop->name_ + "[" + idx + "]";
+                out() << indent + "for (size_t " + idx + " = 0; " + idx +
+                             " < " + count + "; " + idx + "++)"
+                      << indent + "{";
+                serialize_pointers_deep_copy(
+                    cond, expr, cmd, prop, level + 1, indent + "    ");
+                out() << indent + "}";
+            }
+        });
+    }
+
+    void serialize_buffer_deep_copy_out(Function* f)
+    {
+        std::string prefix = "pargs_in->";
+        for (Decl* p : f->params_)
+        {
+            if (!p->attrs_)
+                continue;
+
+            /* Skip the nested pointers if the parameter is neither
+             * deep-copyable nor has the out-only attribute. */
+            UserType* ut = get_user_type_for_deep_copy(edl_, p);
+            if (!ut || !p->attrs_->out_ || p->attrs_->inout_)
+                continue;
+
+            std::string count = count_attr_str(p->attrs_->count_, "_");
+            std::string cmd = "OE_WRITE_DEEPCOPY_OUT_PARAM";
+            std::string mt = mtype_str(p);
+
+            if (count == "1" || count == "")
+            {
+                std::string cond = prefix + p->name_;
+                std::string expr = prefix + p->name_;
+                serialize_pointers_deep_copy(cond, expr, cmd, p, 2, "    ");
+            }
+            else
+            {
+                std::string cond = prefix + p->name_;
+                std::string expr = prefix + p->name_ + "[_i_1]";
+                out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
+                             "; _i_1++)"
+                      << "    {";
+                serialize_pointers_deep_copy(cond, expr, cmd, p, 2, "        ");
+                out() << "    }";
+            }
+        }
+        out() << "";
+    }
+
+    void free_pointers_deep_copy(
+        Decl* p,
+        std::string parent_lhs_expr,
+        std::string parent_rhs_expr,
+        const std::string& indent,
+        int level = 1)
+    {
+        std::string cmd = "free";
+        std::string lhs_expr = parent_lhs_expr + p->name_;
+        std::string rhs_expr = parent_rhs_expr + p->name_;
+        UserType* ut = get_user_type_for_deep_copy(edl_, p);
+        if (!ut)
+            return;
+
+        /*
+         * Deep copied structure. Unmarshal individual fields.
+         */
+        out() << indent + "if (" + lhs_expr + ")" << indent + "{";
+        {
+            std::string count =
+                count_attr_str(p->attrs_->count_, parent_rhs_expr);
+            std::string idx = "_i_" + to_str(level);
+
+            out() << indent + "    for (size_t " + idx + " = 0; " + idx +
+                         " < " + count + "; " + idx + "++)"
+                  << indent + "    {";
+
+            for (Decl* field : ut->fields_)
+            {
+                if (field->type_->tag_ != Ptr || !field->attrs_ ||
+                    field->attrs_->user_check_ ||
+                    field->attrs_->is_size_or_count_)
+                    continue;
+
+                std::string lhs_val =
+                    lhs_expr + "[" + idx + "]." + field->name_;
+                std::string rhs_val =
+                    rhs_expr + "[" + idx + "]." + field->name_;
+                std::string ptr_prefix = "_l_" + std::to_string(level) + "_";
+                UserType* field_ut = get_user_type_for_deep_copy(edl_, field);
+                std::string size = psize(field, rhs_expr + "[" + idx + "].");
+                if (field_ut)
+                {
+                    /* Free the nested pointers first. */
+                    free_pointers_deep_copy(
+                        field,
+                        lhs_expr + "[" + idx + "].",
+                        rhs_expr + "[" + idx + "].",
+                        indent + "        ",
+                        level + 1);
+                }
+                out() << indent + "        " + cmd + "(" + lhs_val + ");";
+            }
+            out() << indent + "    }";
+        }
+        out() << indent + "}";
+    }
+
+    void free_deep_copy_out(
+        Function* f,
+        std::string lhs_prefix,
+        std::string rhs_prefix,
+        const std::string& indent)
+    {
+        for (Decl* p : f->params_)
+        {
+            if (p->attrs_ && p->attrs_->out_ && !p->attrs_->inout_)
+            {
+                UserType* ut = get_user_type_for_deep_copy(edl_, p);
+                if (!ut)
+                    continue;
+                free_pointers_deep_copy(p, lhs_prefix, rhs_prefix, indent, 1);
+            }
+        }
     }
 
     void propagate_errno(Function* f)

@@ -27,6 +27,8 @@
 #include <openenclave/corelibc/string.h>
 #include <openenclave/corelibc/wchar.h>
 
+#include <stdlib.h> // for malloc
+
 OE_EXTERNC_BEGIN
 
 /**
@@ -154,6 +156,10 @@ void* oe_allocate_switchless_ocall_buffer(size_t size);
  * @param buffer The buffer allocated via oe_allocate_ocall_buffer.
  */
 void oe_free_switchless_ocall_buffer(void* buffer);
+
+/* Mimic the support of oe_malloc and oe_free. */
+void* oe_malloc(size_t size);
+void oe_free(void* buffer);
 
 /**
  * For hand-written enclaves, that use the older calling mechanism, define empty

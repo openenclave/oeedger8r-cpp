@@ -32,6 +32,13 @@ typedef struct _oe_ecall_id_t
     uint64_t id;
 } oe_ecall_id_t;
 
+typedef struct _oe_call_args_t
+{
+    oe_result_t result;
+    uint8_t* deepcopy_out_buffer;
+    size_t deepcopy_out_buffer_size;
+} oe_call_args_t;
+
 struct _oe_enclave
 {
     oe_result_t status;
@@ -71,8 +78,8 @@ struct _oe_enclave
 
     void free(void* ptr)
     {
-        // TODO: Assert map element.
-        _allocated_memory.erase(ptr);
+        if (_allocated_memory.find(ptr) != _allocated_memory.end())
+            _allocated_memory.erase(ptr);
         ::free(ptr);
     }
 

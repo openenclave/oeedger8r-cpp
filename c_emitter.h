@@ -187,10 +187,13 @@ class CEmitter
 
     void marshalling_struct(Function* f, bool ocall = false)
     {
+        bool has_deep_copy_out_param = has_deep_copy_out(edl_, f);
         (void)ocall;
         out() << "typedef struct _" + f->name_ + "_args_t"
               << "{"
-              << "    oe_result_t _result;";
+              << "    oe_result_t _result;"
+              << "    uint8_t* deepcopy_out_buffer;"
+              << "    size_t deepcopy_out_buffer_size;";
         indent_ = "    ";
         if (f->rtype_->tag_ != Void)
             out() << atype_str(f->rtype_) + " _retval;";
