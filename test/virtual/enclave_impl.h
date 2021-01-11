@@ -4,6 +4,7 @@
 #include <openenclave/bits/result.h>
 #include <openenclave/bits/types.h>
 
+#include <cstdlib>
 #include <map>
 
 #define OE_ECALL_ID_NULL OE_UINT64_MAX
