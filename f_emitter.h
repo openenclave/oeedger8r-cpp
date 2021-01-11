@@ -62,7 +62,8 @@ class FEmitter
               << "    OE_ADD_SIZE(input_buffer_offset, sizeof(*pargs_in));"
               << "    OE_ADD_SIZE(output_buffer_offset, sizeof(*pargs_out));"
               << ""
-              << "    if (input_buffer_size < sizeof(*pargs_in) || output_buffer_size < sizeof(*pargs_in))"
+              << "    if (input_buffer_size < sizeof(*pargs_in) || "
+                 "output_buffer_size < sizeof(*pargs_in))"
               << "        goto done;"
               << "";
         if (ecall_)
