@@ -200,6 +200,22 @@ extern "C"
                 enc_output_bytes_written);
 
             *output_bytes_written = *enc_output_bytes_written;
+
+            /* Emulate the args->deepcopy_out_buffer passing. */
+            oe_call_args_t* args =
+                static_cast<oe_call_args_t*>(enc_output_buffer);
+            if (args->deepcopy_out_buffer && args->deepcopy_out_buffer_size)
+            {
+                uint8_t* host_buffer =
+                    (uint8_t*)malloc(args->deepcopy_out_buffer_size);
+                memcpy(
+                    host_buffer,
+                    args->deepcopy_out_buffer,
+                    args->deepcopy_out_buffer_size);
+                enclave->free(args->deepcopy_out_buffer);
+                args->deepcopy_out_buffer = host_buffer;
+            }
+
             memcpy(output_buffer, enc_output_buffer, output_buffer_size);
 
             enclave->free(enc_output_bytes_written);

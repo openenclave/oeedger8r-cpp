@@ -54,6 +54,7 @@ int main(int argc, char** argv)
     bool header_only = false;
     bool gen_untrusted = false;
     bool gen_trusted = false;
+    bool experimental = false;
     std::string untrusted_dir = ".";
     std::string trusted_dir = ".";
     std::vector<std::string> files;
@@ -97,7 +98,7 @@ int main(int argc, char** argv)
         else if (a == "--untrusted-dir")
             untrusted_dir = get_dir(i++);
         else if (a == "--experimental")
-            ;
+            experimental = true;
         else if (a.rfind("-D", 0) == 0)
         {
             std::string define = a.substr(2);
@@ -145,7 +146,7 @@ int main(int argc, char** argv)
 
     for (std::string& file : files)
     {
-        Parser p(file, searchpaths, defines);
+        Parser p(file, searchpaths, defines, experimental);
         Edl* edl = p.parse();
 
         if (gen_trusted)

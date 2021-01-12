@@ -70,6 +70,16 @@ extern "C"
         return _enclave->free(ptr);
     }
 
+    void* oe_malloc(size_t size)
+    {
+        return _enclave->malloc(size);
+    }
+
+    void oe_free(void* ptr)
+    {
+        return _enclave->free(ptr);
+    }
+
     oe_result_t oe_call_host_function(
         size_t function_id,
         const void* input_buffer,
@@ -84,6 +94,21 @@ extern "C"
             reinterpret_cast<uint8_t*>(output_buffer),
             output_buffer_size,
             output_bytes_written);
+
+        /* Simulate the args->deepcopy_out_buffer passing. */
+        oe_call_args_t* args = static_cast<oe_call_args_t*>(output_buffer);
+        if (args->deepcopy_out_buffer && args->deepcopy_out_buffer_size)
+        {
+            uint8_t* enclave_buffer =
+                (uint8_t*)oe_malloc(args->deepcopy_out_buffer_size);
+            memcpy(
+                enclave_buffer,
+                args->deepcopy_out_buffer,
+                args->deepcopy_out_buffer_size);
+            /* oe_host_free. */
+            free(args->deepcopy_out_buffer);
+            args->deepcopy_out_buffer = enclave_buffer;
+        }
         return *reinterpret_cast<oe_result_t*>(output_buffer);
     }
 
@@ -101,6 +126,21 @@ extern "C"
             reinterpret_cast<uint8_t*>(output_buffer),
             output_buffer_size,
             output_bytes_written);
+
+        /* Emulate the args->deepcopy_out_buffer passing. */
+        oe_call_args_t* args = static_cast<oe_call_args_t*>(output_buffer);
+        if (args->deepcopy_out_buffer && args->deepcopy_out_buffer_size)
+        {
+            uint8_t* enclave_buffer =
+                (uint8_t*)oe_malloc(args->deepcopy_out_buffer_size);
+            memcpy(
+                enclave_buffer,
+                args->deepcopy_out_buffer,
+                args->deepcopy_out_buffer_size);
+            /* oe_host_free. */
+            free(args->deepcopy_out_buffer);
+            args->deepcopy_out_buffer = enclave_buffer;
+        }
         return *reinterpret_cast<oe_result_t*>(output_buffer);
     }
 

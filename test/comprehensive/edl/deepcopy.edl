@@ -58,6 +58,24 @@ enclave {
     [count=2] NestedStruct* more_structs;
   };
 
+  struct CountParamNestedStruct
+  {
+    size_t num;
+    [count=num] CountParamStruct* array_of_struct;
+  };
+
+  struct MultipleNestedStruct
+  {
+    size_t num_1;
+    [count=num_1] CountParamStruct* array_of_struct_1;
+    size_t num_2;
+    [count=num_2] SizeParamStruct* array_of_struct_2;
+    size_t num_3;
+    [count=num_3] CountSizeParamStruct* array_of_struct_3;
+    size_t num_4;
+    [count=num_4] CountParamNestedStruct* array_of_struct_4;
+  };
+
   struct IOVEC
   {
     [size=len] void *base;
@@ -145,6 +163,23 @@ enclave {
     public void deepcopy_countsize_return_large([in, out, count=1] CountSizeStruct* s);
 
     public void test_deepcopy_ocalls();
+
+    public void deepcopy_countparam_out([out, count=1] CountParamStruct* s);
+    public void deepcopy_countparamarray_out([out, count=2] CountParamStruct* s);
+    public void deepcopy_countparamarray_partial_out([out, count=2] CountParamStruct* s);
+    public void deepcopy_sizeparam_out([out, count=1] SizeParamStruct* s);
+    public void deepcopy_countsizeparam_out([out, count=1] CountSizeParamStruct* s);
+    public void deepcopy_countsize_out([out, count=1] CountSizeStruct* s);
+    public void deepcopy_nested_out([out, count=1] NestedStruct* n);
+    public void deepcopy_nested_countparam_out([out, count=1] CountParamNestedStruct* n);
+    public void deepcopy_multiple_nested_out([out, count=1] MultipleNestedStruct* n);
+    public void deepcopy_multiple_nested_partial_out([out, count=1] MultipleNestedStruct* n);
+
+    public void deepcopy_mix([in, count=1] SizeParamStruct* s_in,
+                             [in, out, count=1] SizeParamStruct* s_inout,
+                             [out, count=1] SizeParamStruct* s_out,
+                             [user_check] SizeParamStruct* s_user_check,
+                             [out, count=1] SizeParamStruct* s_out_2);
   };
 
   untrusted
@@ -176,5 +211,21 @@ enclave {
 
     // Expect the callee to set a large count value on return.
     void ocall_deepcopy_countsize_return_large([in, out, count=1] CountSizeStruct* s);
+
+    void ocall_deepcopy_countparam_out([out, count=1] CountParamStruct* s);
+    void ocall_deepcopy_countparamarray_out([out, count=2] CountParamStruct* s);
+    void ocall_deepcopy_countparamarray_partial_out([out, count=2] CountParamStruct* s);
+    void ocall_deepcopy_sizeparam_out([out, count=1] SizeParamStruct* s);
+    void ocall_deepcopy_countsizeparam_out([out, count=1] CountSizeParamStruct* s);
+    void ocall_deepcopy_countsize_out([out, count=1] CountSizeStruct* s);
+    void ocall_deepcopy_nested_out([out, count=1] NestedStruct* n);
+    void ocall_deepcopy_nested_countparam_out([out, count=1] CountParamNestedStruct* n);
+    void ocall_deepcopy_multiple_nested_out([out, count=1] MultipleNestedStruct* n);
+    void ocall_deepcopy_multiple_nested_partial_out([out, count=1] MultipleNestedStruct* n);
+    void ocall_deepcopy_mix([in, count=1] SizeParamStruct* s_in,
+                            [in, out, count=1] SizeParamStruct* s_inout,
+                            [out, count=1] SizeParamStruct* s_out,
+                            [user_check] SizeParamStruct* s_user_check,
+                            [out, count=1] SizeParamStruct* s_out_2);
   };
 };

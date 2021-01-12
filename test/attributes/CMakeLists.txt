@@ -134,8 +134,10 @@ add_attributes_test(OUT_TYPE1 "unexpected pointer attributes for `int'" "")
 
 add_attributes_test(OUT_TYPE2 "`out' is invalid for plain type `mytype'" "")
 
-add_attributes_test(OUT_USER_TYPE_PTR
-                    "`out' is invalid for user defined type `MyStruct\\*'" "")
+add_attributes_test(
+  OUT_USER_TYPE_PTR
+  "`out' for user defined type `MyStruct\\*' requires the --experimental option"
+  "")
 
 # Checks for count/size
 add_attributes_test(
