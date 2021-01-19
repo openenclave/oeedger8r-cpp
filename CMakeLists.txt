@@ -13,14 +13,17 @@ if (NOT ";Debug;RelWithDebInfo;Release;" MATCHES ";${CMAKE_BUILD_TYPE};")
     FATAL_ERROR "CMAKE_BUILD_TYPE must be Debug, RelWithDebInfo or Release")
 endif ()
 
-# Set compiler search order to prefer Clang
-# This has to be done before `project`
-# http://cmake.3232098.n2.nabble.com/Prefer-clang-over-gcc-td7597742.html
+# If CC environment variable has been specified or if CMAKE_C_COMPILER
+# cmake variable has been passed to cmake, use the C compiler that has
+# been specified. Otherwise, prefer clang. Same for C++ compiler.
+# This must be done before `project` command.
 if (UNIX)
-  set(CMAKE_C_COMPILER_NAMES clang-8 clang-7 clang cc)
-  set(CMAKE_CXX_COMPILER_NAMES clang++-8 clang++-7 clang c++)
-else ()
-  # Prefer platform's default compiler.
+  if (NOT DEFINED ENV{CC} AND NOT DEFINED CMAKE_C_COMPILER)
+    find_program(CMAKE_C_COMPILER clang-8 clang)
+  endif ()
+  if (NOT DEFINED ENV{CXX} AND NOT DEFINED CMAKE_CXX_COMPILER)
+    find_program(CMAKE_CXX_COMPILER clang++-8 clang++)
+  endif ()
 endif ()
 
 project(oeedger8r)
