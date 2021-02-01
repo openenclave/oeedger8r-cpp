@@ -226,10 +226,31 @@ inline std::string size_attr_str(const Token& t, const std::string& prefix = "")
     return count_attr_str(t, prefix);
 }
 
+inline std::string pcount(Decl* p, const std::string& prefix = "")
+{
+    if (p->attrs_ && (p->attrs_->string_ || p->attrs_->wstring_))
+        return prefix + p->name_ + "_len";
+    if (p->dims_ && !p->dims_->empty())
+        return "1";
+    if (p->type_->tag_ == Foreign && p->attrs_ && p->attrs_->isary_)
+        return "1";
+
+    if (!p->attrs_->size_.is_empty() && !p->attrs_->count_.is_empty())
+        return count_attr_str(p->attrs_->size_, prefix);
+
+    if (p->attrs_ && !p->attrs_->count_.is_empty())
+        return count_attr_str(p->attrs_->count_, prefix);
+
+    if (p->attrs_ && !p->attrs_->size_.is_empty())
+        return "1";
+
+    return "1";
+}
+
 inline std::string psize(Decl* p, const std::string& prefix = "")
 {
     if (p->attrs_ && (p->attrs_->string_ || p->attrs_->wstring_))
-        return prefix + p->name_ + "_len * sizeof(" + btype(p->type_) + ")";
+        return "sizeof(" + btype(p->type_) + ")";
     if (p->dims_ && !p->dims_->empty())
         return "sizeof(" + decl_str("", p->type_, p->dims_) + ")";
     if (p->type_->tag_ == Foreign && p->attrs_ && p->attrs_->isary_)
@@ -242,12 +263,10 @@ inline std::string psize(Decl* p, const std::string& prefix = "")
         s = "sizeof(*(" + p->type_->name_ + ")0)";
 
     if (!p->attrs_->size_.is_empty() && !p->attrs_->count_.is_empty())
-        return "(" + size_attr_str(p->attrs_->size_, prefix) + " * " +
-               count_attr_str(p->attrs_->count_, prefix) + ")";
+        return size_attr_str(p->attrs_->count_, prefix);
 
     if (p->attrs_ && !p->attrs_->count_.is_empty())
-        return "((size_t)" + count_attr_str(p->attrs_->count_, prefix) + " * " +
-               s + ")";
+        return s;
 
     if (p->attrs_ && !p->attrs_->size_.is_empty())
         return size_attr_str(p->attrs_->size_, prefix);
