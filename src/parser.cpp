@@ -1179,6 +1179,14 @@ void Parser::validate_attributes(Decl* d)
                     tokstr,
                     typestr.c_str());
             }
+
+            if (itr.first == TokIsPtr && d->dims_)
+            {
+                ERROR_AT(
+                    itr.second,
+                    "invalid parameter - `%s' is a pointer array",
+                    static_cast<std::string>(d->name_).c_str());
+            }
         }
 
         else if (itr.first == TokCount || itr.first == TokSize)
@@ -1254,6 +1262,14 @@ void Parser::validate_attributes(Decl* d)
                             "`out' for user defined type `%s' requires the "
                             "--experimental option",
                             atype_str(type).c_str());
+                }
+
+                if (d->dims_)
+                {
+                    ERROR_AT(
+                        itr.second,
+                        "invalid parameter - `%s' is a pointer array",
+                        static_cast<std::string>(d->name_).c_str());
                 }
             }
         }
