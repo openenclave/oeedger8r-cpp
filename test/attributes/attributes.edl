@@ -79,6 +79,9 @@ enclave
 #ifdef ISPTR_TYPE3
         void func([in, isptr] MyStruct* obj);
 #endif
+#ifdef ISPTR_ARRAY
+        void func([isptr, in] MyStruct s[8]);
+#endif
 
 // Checks for user_check
 #ifdef USER_CHECK_IN
@@ -121,6 +124,15 @@ enclave
 #endif
 #ifdef OUT_USER_TYPE_PTR
         void func([out] MyStruct* s);
+#endif
+#ifdef IN_USER_TYPE_PTR_ARRAY
+        void func([in] MyStruct* s[8]);
+#endif
+#ifdef OUT_USER_TYPE_PTR_ARRAY
+        void func([out] MyStruct* s[8]);
+#endif
+#ifdef INOUT_USER_TYPE_PTR_ARRAY
+        void func([in, out] MyStruct* s[8]);
 #endif
 
 // Checks for count/size

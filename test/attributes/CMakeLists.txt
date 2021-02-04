@@ -93,6 +93,7 @@ add_attributes_test(
   ISPTR_TYPE3
   "`isptr' attribute is only valid for user defined type, not for `MyStruct\\*'"
   "")
+add_attributes_test(ISPTR_ARRAY "invalid parameter - `s' is a pointer array" "")
 
 # Checks for user_check
 add_attributes_test(
@@ -138,6 +139,15 @@ add_attributes_test(
   OUT_USER_TYPE_PTR
   "`out' for user defined type `MyStruct\\*' requires the --experimental option"
   "")
+
+add_attributes_test(IN_USER_TYPE_PTR_ARRAY
+                    "invalid parameter - `s' is a pointer array" "")
+
+add_attributes_test(OUT_USER_TYPE_PTR_ARRAY
+                    "invalid parameter - `s' is a pointer array" "")
+
+add_attributes_test(INOUT_USER_TYPE_PTR_ARRAY
+                    "invalid parameter - `s' is a pointer array" "")
 
 # Checks for count/size
 add_attributes_test(
