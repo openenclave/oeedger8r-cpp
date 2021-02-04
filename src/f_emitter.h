@@ -68,8 +68,8 @@ class FEmitter
         }
         out() << "    size_t input_buffer_offset = 0;"
               << "    size_t output_buffer_offset = 0;"
-              << "    OE_ADD_SIZE(input_buffer_offset, sizeof(*pargs_in));"
-              << "    OE_ADD_SIZE(output_buffer_offset, sizeof(*pargs_out));"
+              << "    OE_ADD_SIZE(input_buffer_offset, 1, sizeof(*pargs_in));"
+              << "    OE_ADD_SIZE(output_buffer_offset, 1, sizeof(*pargs_out));"
               << ""
               << "    if (input_buffer_size < sizeof(*pargs_in) || "
                  "output_buffer_size < sizeof(*pargs_in))"
@@ -201,13 +201,15 @@ class FEmitter
         iterate_deep_copyable_fields(ut, [&](Decl* prop) {
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
-            std::string size = psize(prop, "pargs_in->" + parent_expr + op);
+            std::string argcount =
+                pcount(prop, "pargs_in->" + parent_expr + op);
+            std::string argsize = psize(prop, "pargs_in->" + parent_expr + op);
             std::string cond = parent_condition + " && " + (is_out ? "!" : "") +
                                "pargs_in->" + expr;
             std::string mt = mtype_str(prop);
             out() << indent + "if (" + cond + ")"
-                  << indent + "    " + cmd + "(" + expr + ", " + size + ", " +
-                         mt + ");";
+                  << indent + "    " + cmd + "(" + expr + ", " + argcount +
+                         ", " + argsize + ", " + mt + ");";
 
             UserType* ut = get_user_type_for_deep_copy(edl_, prop);
             if (!ut)
@@ -245,12 +247,13 @@ class FEmitter
         {
             if (!p->attrs_ || !(p->attrs_->in_ || p->attrs_->inout_))
                 continue;
-            std::string size = psize(p, "pargs_in->");
+            std::string argcount = pcount(p, "pargs_in->");
+            std::string argsize = psize(p, "pargs_in->");
             std::string cmd = (p->attrs_->inout_) ? "OE_SET_IN_OUT_POINTER"
                                                   : "OE_SET_IN_POINTER";
             out() << "    if (pargs_in->" + p->name_ + ")"
-                  << "        " + cmd + "(" + p->name_ + ", " + size + ", " +
-                         mtype_str(p) + ");";
+                  << "        " + cmd + "(" + p->name_ + ", " + argcount +
+                         ", " + argsize + ", " + mtype_str(p) + ");";
 
             empty = false;
             UserType* ut = get_user_type_for_deep_copy(edl_, p);
@@ -289,13 +292,14 @@ class FEmitter
             if (!p->attrs_ || !(p->attrs_->out_ || p->attrs_->inout_))
                 continue;
 
-            std::string size = psize(p, "pargs_in->");
+            std::string argcount = pcount(p, "pargs_in->");
+            std::string argsize = psize(p, "pargs_in->");
             std::string cmd = (p->attrs_->inout_)
                                   ? "OE_COPY_AND_SET_IN_OUT_POINTER"
                                   : "OE_SET_OUT_POINTER";
             out() << "    if (pargs_in->" + p->name_ + ")"
-                  << "        " + cmd + "(" + p->name_ + ", " + size + ", " +
-                         mtype_str(p) + ");";
+                  << "        " + cmd + "(" + p->name_ + ", " + argcount +
+                         ", " + argsize + ", " + mtype_str(p) + ");";
             empty = false;
 
             /* Skip on setting nested pointers if the parameter is not
@@ -344,11 +348,12 @@ class FEmitter
         iterate_deep_copyable_fields(ut, [&](Decl* prop) {
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
-            std::string size = psize(prop, parent_expr + op);
+            std::string argcount = pcount(prop, parent_expr + op);
+            std::string argsize = psize(prop, parent_expr + op);
             std::string cond = parent_condition + " && " + expr;
             out() << indent + "if (" + cond + ")"
-                  << indent + "    OE_ADD_SIZE(" + buffer_size + ", " + size +
-                         ");";
+                  << indent + "    OE_ADD_SIZE(" + buffer_size + ", " +
+                         argcount + ", " + argsize + ");";
 
             UserType* ut = get_user_type_for_deep_copy(edl_, prop);
             if (!ut)
@@ -478,10 +483,12 @@ class FEmitter
         iterate_deep_copyable_fields(ut, [&](Decl* prop) {
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
-            std::string size = psize(prop, parent_expr + op);
+            std::string argcount = pcount(prop, parent_expr + op);
+            std::string argsize = psize(prop, parent_expr + op);
             std::string cond = parent_condition + " && " + expr;
             out() << indent + "if (" + cond + ")"
-                  << indent + "    " + cmd + "(" + expr + ", " + size + ");";
+                  << indent + "    " + cmd + "(" + expr + ", " + argcount +
+                         ", " + argsize + ");";
 
             UserType* ut = get_user_type_for_deep_copy(edl_, prop);
             if (!ut)
@@ -588,7 +595,6 @@ class FEmitter
                     rhs_expr + "[" + idx + "]." + field->name_;
                 std::string ptr_prefix = "_l_" + std::to_string(level) + "_";
                 UserType* field_ut = get_user_type_for_deep_copy(edl_, field);
-                std::string size = psize(field, rhs_expr + "[" + idx + "].");
                 if (field_ut)
                 {
                     /* Free the nested pointers first. */

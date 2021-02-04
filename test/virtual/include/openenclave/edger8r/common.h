@@ -66,20 +66,33 @@ done:
     return result;
 }
 
-#define OE_ADD_SIZE(total, size)                                   \
+#define OE_COMPUTE_SIZE(a, b, c)                 \
+    do                                           \
+    {                                            \
+        size_t _a = (size_t)(a);                 \
+        size_t _b = (size_t)(b);                 \
+        if (_a && _b && (_a > OE_SIZE_MAX / _b)) \
+        {                                        \
+            _result = OE_INTEGER_OVERFLOW;       \
+            goto done;                           \
+        }                                        \
+        c = _a * _b;                             \
+    } while (0);
+
+#define OE_ADD_SIZE(total, argcount, argsize)                      \
     do                                                             \
     {                                                              \
+        size_t _addend = (size_t)(argsize);                        \
+        if (argcount > 1)                                          \
+        {                                                          \
+            OE_COMPUTE_SIZE(argsize, argcount, _addend);           \
+        }                                                          \
         if (sizeof(total) > sizeof(size_t) && total > OE_SIZE_MAX) \
         {                                                          \
             _result = OE_INVALID_PARAMETER;                        \
             goto done;                                             \
         }                                                          \
-        if (sizeof(size) > sizeof(size_t) && size > OE_SIZE_MAX)   \
-        {                                                          \
-            _result = OE_INVALID_PARAMETER;                        \
-            goto done;                                             \
-        }                                                          \
-        if (oe_add_size((size_t*)&total, (size_t)size) != OE_OK)   \
+        if (oe_add_size((size_t*)&total, _addend) != OE_OK)        \
         {                                                          \
             _result = OE_INTEGER_OVERFLOW;                         \
             goto done;                                             \
@@ -90,11 +103,13 @@ done:
  * Compute and set the pointer value for the given parameter within the input
  * buffer. Make sure that the buffer has enough space.
  */
-#define OE_SET_IN_POINTER(argname, argsize, argtype)                       \
+#define OE_SET_IN_POINTER(argname, argcount, argsize, argtype)             \
     if (pargs_in->argname)                                                 \
     {                                                                      \
+        size_t _size;                                                      \
+        OE_COMPUTE_SIZE(argcount, argsize, _size);                         \
         pargs_in->argname = (argtype)(input_buffer + input_buffer_offset); \
-        OE_ADD_SIZE(input_buffer_offset, (size_t)(argsize));               \
+        OE_ADD_SIZE(input_buffer_offset, 1, _size);                        \
         if (input_buffer_offset > input_buffer_size)                       \
         {                                                                  \
             _result = OE_BUFFER_TOO_SMALL;                                 \
@@ -108,11 +123,13 @@ done:
  * Compute and set the pointer value for the given parameter within the output
  * buffer. Make sure that the buffer has enough space.
  */
-#define OE_SET_OUT_POINTER(argname, argsize, argtype)                        \
+#define OE_SET_OUT_POINTER(argname, argcount, argsize, argtype)              \
     do                                                                       \
     {                                                                        \
+        size_t _size;                                                        \
+        OE_COMPUTE_SIZE(argcount, argsize, _size);                           \
         pargs_in->argname = (argtype)(output_buffer + output_buffer_offset); \
-        OE_ADD_SIZE(output_buffer_offset, (size_t)(argsize));                \
+        OE_ADD_SIZE(output_buffer_offset, 1, _size);                         \
         if (output_buffer_offset > output_buffer_size)                       \
         {                                                                    \
             _result = OE_BUFFER_TOO_SMALL;                                   \
@@ -126,45 +143,53 @@ done:
  * Also copy the contents of the corresponding in-out pointer in the input
  * buffer.
  */
-#define OE_COPY_AND_SET_IN_OUT_POINTER(argname, argsize, argtype)            \
+#define OE_COPY_AND_SET_IN_OUT_POINTER(argname, argcount, argsize, argtype)  \
     if (pargs_in->argname)                                                   \
     {                                                                        \
+        size_t _size;                                                        \
+        OE_COMPUTE_SIZE(argcount, argsize, _size);                           \
         argtype _p_in = (argtype)pargs_in->argname;                          \
         pargs_in->argname = (argtype)(output_buffer + output_buffer_offset); \
-        OE_ADD_SIZE(output_buffer_offset, (size_t)argsize);                  \
+        OE_ADD_SIZE(output_buffer_offset, 1, _size);                         \
         if (output_buffer_offset > output_buffer_size)                       \
         {                                                                    \
             _result = OE_BUFFER_TOO_SMALL;                                   \
             goto done;                                                       \
         }                                                                    \
-        memcpy(pargs_in->argname, _p_in, (size_t)(argsize));                 \
+        memcpy(pargs_in->argname, _p_in, _size);                             \
     }
 
 /**
  * Copy an input parameter to input buffer.
  */
-#define OE_WRITE_IN_PARAM(argname, argsize, argtype)                     \
+#define OE_WRITE_IN_PARAM(argname, argcount, argsize, argtype)           \
     if (argname)                                                         \
     {                                                                    \
+        size_t _size;                                                    \
+        OE_COMPUTE_SIZE(argcount, argsize, _size);                       \
         _args.argname = (argtype)(_input_buffer + _input_buffer_offset); \
-        OE_ADD_SIZE(_input_buffer_offset, (size_t)(argsize));            \
-        memcpy((void*)_args.argname, argname, (size_t)(argsize));        \
+        OE_ADD_SIZE(_input_buffer_offset, 1, _size);                     \
+        memcpy((void*)_args.argname, argname, _size);                    \
     }
 
 #define OE_WRITE_IN_OUT_PARAM OE_WRITE_IN_PARAM
 
-#define OE_WRITE_DEEPCOPY_OUT_PARAM(argname, argsize)                          \
+#define OE_WRITE_DEEPCOPY_OUT_PARAM(argname, argcount, argsize)                \
     do                                                                         \
     {                                                                          \
+        size_t _size;                                                          \
+        OE_COMPUTE_SIZE(argcount, argsize, _size);                             \
         void* p = (void*)(_deepcopy_out_buffer + _deepcopy_out_buffer_offset); \
-        OE_ADD_SIZE(_deepcopy_out_buffer_offset, (size_t)(argsize));           \
-        memcpy(p, argname, (size_t)(argsize));                                 \
+        OE_ADD_SIZE(_deepcopy_out_buffer_offset, 1, _size);                    \
+        memcpy(p, argname, _size);                                             \
     } while (0)
 
-#define OE_SET_DEEPCOPY_OUT_PARAM(argname, argsize, argtype)               \
+#define OE_SET_DEEPCOPY_OUT_PARAM(argname, argcount, argsize, argtype)     \
     if (argname)                                                           \
     {                                                                      \
-        argname = (argtype)malloc(argsize);                                \
+        size_t _size;                                                      \
+        OE_COMPUTE_SIZE(argcount, argsize, _size);                         \
+        argname = (argtype)malloc(_size);                                  \
         if (!argname)                                                      \
         {                                                                  \
             _result = OE_OUT_OF_MEMORY;                                    \
@@ -172,26 +197,25 @@ done:
         }                                                                  \
         argtype _ptr =                                                     \
             (argtype)(_deepcopy_out_buffer + _deepcopy_out_buffer_offset); \
-        OE_ADD_SIZE(_deepcopy_out_buffer_offset, (size_t)(argsize));       \
+        OE_ADD_SIZE(_deepcopy_out_buffer_offset, 1, _size);                \
         if (_deepcopy_out_buffer_offset > _deepcopy_out_buffer_size)       \
         {                                                                  \
             _result = OE_BUFFER_TOO_SMALL;                                 \
             goto done;                                                     \
         }                                                                  \
-        memcpy(argname, _ptr, argsize);                                    \
+        memcpy(argname, _ptr, _size);                                      \
     }
 
 /**
  * Read an output parameter from output buffer.
  */
-#define OE_READ_OUT_PARAM(argname, argsize)                    \
-    if (argname)                                               \
-    {                                                          \
-        memcpy(                                                \
-            (void*)argname,                                    \
-            _output_buffer + _output_buffer_offset,            \
-            (size_t)(argsize));                                \
-        OE_ADD_SIZE(_output_buffer_offset, (size_t)(argsize)); \
+#define OE_READ_OUT_PARAM(argname, argcount, argsize)                          \
+    if (argname)                                                               \
+    {                                                                          \
+        size_t _size;                                                          \
+        OE_COMPUTE_SIZE(argcount, argsize, _size);                             \
+        memcpy((void*)argname, _output_buffer + _output_buffer_offset, _size); \
+        OE_ADD_SIZE(_output_buffer_offset, 1, _size);                          \
     }
 
 #define OE_READ_IN_OUT_PARAM OE_READ_OUT_PARAM

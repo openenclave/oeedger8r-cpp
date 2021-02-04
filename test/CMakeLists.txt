@@ -10,6 +10,7 @@ add_subdirectory(comprehensive)
 add_subdirectory(import)
 add_subdirectory(prefix)
 add_subdirectory(preprocessor)
+add_subdirectory(safe_math)
 
 # Virtual Mode execution for tests.
 add_subdirectory(virtual)
