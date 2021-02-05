@@ -211,6 +211,15 @@ inline std::string btype(Type* t)
     return atype_str(t);
 }
 
+inline bool has_size_or_count_attr(Decl* d)
+{
+    if (!d->attrs_)
+        return false;
+    if (d->attrs_->count_.is_empty() && d->attrs_->size_.is_empty())
+        return false;
+    return true;
+}
+
 inline std::string count_attr_str(
     const Token& t,
     const std::string& prefix = "")

@@ -1,0 +1,114 @@
+// Copyright (c) Open Enclave SDK contributors.
+// Licensed under the MIT License.
+
+enclave
+{
+#ifdef PTR_IN_STRUCT
+    struct MyStruct
+    {
+       size_t size;
+       int* p;
+    };
+#endif
+#ifdef NO_POINTER_IN_STRUCT
+    struct MyStruct
+    {
+       size_t size;
+       [size = size] int* p;
+    };
+#endif
+#ifdef WALL_PTR_IN_STRUCT
+    struct MyStruct
+    {
+       size_t size;
+       int* p;
+    };
+#endif
+#ifdef WALL_NO_PTR_IN_STRUCT
+    struct MyStruct
+    {
+       size_t size;
+       int* p;
+    };
+#endif
+#ifdef NON_FOREIGN_TYPE_PTR_TYPE1
+    struct MyStruct
+    {
+       size_t size;
+       [size=size] int* p;
+    };
+#endif
+#ifdef NON_FOREIGN_TYPE_PTR_TYPE2
+    struct MyStruct
+    {
+       size_t size;
+       int* p;
+    };
+#endif
+
+    struct TestStruct
+    {
+       size_t size;
+       [size = size] int* p;
+    };
+
+    untrusted
+    {
+#ifdef RETURN_PTR_TYPE1
+        MyStruct* func();
+#endif
+#ifdef RETURN_PTR_TYPE2
+        void* func();
+#endif
+#ifdef RETURN_PTR_TYPE3
+        const int* func();
+#endif
+#ifdef WALL_RETURN_PTR
+        MyStruct* func();
+#endif
+#ifdef WALL_NO_RETURN_PTR
+        MyStruct* func();
+#endif
+
+#ifdef PTR_IN_FUNCTION_TYPE1
+        void func(TestStruct* s);
+#endif
+#ifdef PTR_IN_FUNCTION_TYPE2
+        void func(struct TestStruct* s);
+#endif
+#ifdef PTR_IN_FUNCTION_TYPE3
+        void func(const TestStruct* s);
+#endif
+#ifdef PTR_IN_FUNCTION_TYPE4
+        void func(int* s);
+#endif
+#ifdef WALL_PTR_IN_FUNCTION
+        void func(TestStruct* s);
+#endif
+#ifdef WALL_PTR_NO_IN_FUNCTION
+        void func(TestStruct* s);
+#endif
+
+#ifdef FOREIGN_TYPE_PTR_TYPE1
+        void func(MyStruct* s);
+#endif
+#ifdef FOREIGN_TYPE_PTR_TYPE2
+        void func(struct MyStruct* s);
+#endif
+#ifdef FOREIGN_TYPE_PTR_TYPE3
+        void func(const MyStruct* s);
+#endif
+#ifdef WALL_FOREIGN_TYPE_PTR
+        void func(MyStruct* s);
+#endif
+#ifdef WALL_NO_FOREIGN_TYPE_PTR
+        void func(MyStruct* s);
+#endif
+#ifdef NON_FOREIGN_TYPE_PTR_TYPE1
+        void func(MyStruct* s);
+#endif
+#ifdef NON_FOREIGN_TYPE_PTR_TYPE2
+        void func(MyStruct* s);
+#endif
+    };
+};
