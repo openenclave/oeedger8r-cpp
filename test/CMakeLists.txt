@@ -8,6 +8,11 @@ add_subdirectory(call_conflict)
 add_subdirectory(cmdline)
 add_subdirectory(comprehensive)
 add_subdirectory(import)
+
+if (UNIX)
+  add_subdirectory(nix)
+endif ()
+
 add_subdirectory(prefix)
 add_subdirectory(preprocessor)
 add_subdirectory(safe_math)
