@@ -14,4 +14,4 @@ add_test(
 	   echo ${PASS_STRING}")
 
 set_tests_properties(oe-nix-shell-test PROPERTIES PASS_REGULAR_EXPRESSION
-                                                  "${PASS_STRING}")
+                                                  "Intentionally fail the test to look at the test logs")
