@@ -85,7 +85,7 @@ oe_result_t ecall_string_no_null_terminator_modified(
     if ((_result = oe_call_enclave_function(
              enclave,
              &global_id,
-             __all_ecall_info_table[all_fcn_id_ecall_string_no_null_terminator]
+             _all_ecall_info_table[all_fcn_id_ecall_string_no_null_terminator]
                  .name,
              _input_buffer,
              _input_buffer_size,
@@ -99,7 +99,7 @@ oe_result_t ecall_string_no_null_terminator_modified(
     OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));
 
     /* Check if the call succeeded */
-    if ((_result = _pargs_out->_result) != OE_OK)
+    if ((_result = _pargs_out->result) != OE_OK)
         goto done;
 
     /* Currently exactly _output_buffer_size bytes must be written */
@@ -197,7 +197,7 @@ oe_result_t ecall_wstring_no_null_terminator_modified(
     if ((_result = oe_call_enclave_function(
              enclave,
              &global_id,
-             __all_ecall_info_table[all_fcn_id_ecall_wstring_no_null_terminator]
+             _all_ecall_info_table[all_fcn_id_ecall_wstring_no_null_terminator]
                  .name,
              _input_buffer,
              _input_buffer_size,
@@ -211,7 +211,7 @@ oe_result_t ecall_wstring_no_null_terminator_modified(
     OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));
 
     /* Check if the call succeeded */
-    if ((_result = _pargs_out->_result) != OE_OK)
+    if ((_result = _pargs_out->result) != OE_OK)
         goto done;
 
     /* Currently exactly _output_buffer_size bytes must be written */

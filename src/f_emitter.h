@@ -55,8 +55,9 @@ class FEmitter
             out() << "    OE_UNUSED(input_buffer_size);";
         out() << ""
               << "    /* Prepare parameters. */"
-              << "    " + args_t + "* pargs_in = (" + args_t + "*)input_buffer;"
-              << "    " + args_t + "* pargs_out = (" + args_t +
+              << "    " + args_t + "* _pargs_in = (" + args_t +
+                     "*)input_buffer;"
+              << "    " + args_t + "* _pargs_out = (" + args_t +
                      "*)output_buffer;"
               << "";
         if (has_deep_copy_out_)
@@ -66,15 +67,16 @@ class FEmitter
                   << "    size_t _deepcopy_out_buffer_size = 0;"
                   << "";
         }
-        out() << "    size_t input_buffer_offset = 0;"
-              << "    size_t output_buffer_offset = 0;"
-              << "    OE_ADD_SIZE(input_buffer_offset, 1, sizeof(*pargs_in));"
-              << "    OE_ADD_SIZE(output_buffer_offset, 1, sizeof(*pargs_out));"
-              << ""
-              << "    if (input_buffer_size < sizeof(*pargs_in) || "
-                 "output_buffer_size < sizeof(*pargs_in))"
-              << "        goto done;"
-              << "";
+        out()
+            << "    size_t _input_buffer_offset = 0;"
+            << "    size_t _output_buffer_offset = 0;"
+            << "    OE_ADD_SIZE(_input_buffer_offset, 1, sizeof(*_pargs_in));"
+            << "    OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));"
+            << ""
+            << "    if (input_buffer_size < sizeof(*_pargs_in) || "
+               "output_buffer_size < sizeof(*_pargs_in))"
+            << "        goto done;"
+            << "";
         if (ecall_)
             ecall_buffer_checks();
         else
@@ -123,36 +125,37 @@ class FEmitter
                 << "    }"
                 << ""
                 << "    /* Set the _deepcopy_out_buffer and "
-                   "_deepcopy_out_buffer as part of pargs_out. */"
-                << "    pargs_out->deepcopy_out_buffer = _deepcopy_out_buffer;"
-                << "    pargs_out->deepcopy_out_buffer_size = "
+                   "_deepcopy_out_buffer as part of _pargs_out. */"
+                << "    _pargs_out->deepcopy_out_buffer = _deepcopy_out_buffer;"
+                << "    _pargs_out->deepcopy_out_buffer_size = "
                    "_deepcopy_out_buffer_size;"
                 << "";
         }
         else
             out() << "    /* There is no deep-copyable out parameter. */"
-                  << "    pargs_out->deepcopy_out_buffer = NULL;"
-                  << "    pargs_out->deepcopy_out_buffer_size = 0;"
+                  << "    _pargs_out->deepcopy_out_buffer = NULL;"
+                  << "    _pargs_out->deepcopy_out_buffer_size = 0;"
                   << "";
         propagate_errno(f);
         out() << "    /* Success. */"
               << "    _result = OE_OK;"
-              << "    *output_bytes_written = output_buffer_offset;"
+              << "    *output_bytes_written = _output_buffer_offset;"
               << ""
               << "done:";
         if (has_deep_copy_out_)
         {
-            out() << "    /* Free pargs_out->deepcopy_out_buffer on failure. */"
-                  << "    if (_result != OE_OK)"
-                  << "    {"
-                  << "        oe_free(pargs_out->deepcopy_out_buffer);"
-                  << "        pargs_out->deepcopy_out_buffer = NULL;"
-                  << "        pargs_out->deepcopy_out_buffer_size = 0;"
-                  << "    }"
-                  << "";
+            out()
+                << "    /* Free _pargs_out->deepcopy_out_buffer on failure. */"
+                << "    if (_result != OE_OK)"
+                << "    {"
+                << "        oe_free(_pargs_out->deepcopy_out_buffer);"
+                << "        _pargs_out->deepcopy_out_buffer = NULL;"
+                << "        _pargs_out->deepcopy_out_buffer_size = 0;"
+                << "    }"
+                << "";
             out() << "    /* Free nested buffers allocated by the user "
                      "function. */";
-            free_deep_copy_out(f, "pargs_in->", "pargs_in->", "    ");
+            free_deep_copy_out(f, "_pargs_in->", "_pargs_in->", "    ");
             out() << "";
         }
         write_result();
@@ -202,10 +205,10 @@ class FEmitter
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
             std::string argcount =
-                pcount(prop, "pargs_in->" + parent_expr + op);
-            std::string argsize = psize(prop, "pargs_in->" + parent_expr + op);
+                pcount(prop, "_pargs_in->" + parent_expr + op);
+            std::string argsize = psize(prop, "_pargs_in->" + parent_expr + op);
             std::string cond = parent_condition + " && " + (is_out ? "!" : "") +
-                               "pargs_in->" + expr;
+                               "_pargs_in->" + expr;
             std::string mt = mtype_str(prop);
             out() << indent + "if (" + cond + ")"
                   << indent + "    " + cmd + "(" + expr + ", " + argcount +
@@ -216,7 +219,7 @@ class FEmitter
                 return;
 
             std::string count =
-                count_attr_str(prop->attrs_->count_, "pargs_in->");
+                count_attr_str(prop->attrs_->count_, "_pargs_in->");
 
             if (count == "1" || count == "")
             {
@@ -231,7 +234,7 @@ class FEmitter
                 out() << indent + "for (size_t " + idx + " = 0; " + idx +
                              " < " + count + "; " + idx + "++)"
                       << indent + "{";
-                std::string cond = parent_condition + " && pargs_in->" +
+                std::string cond = parent_condition + " && _pargs_in->" +
                                    parent_expr + op + prop->name_;
                 set_pointers_deep_copy(
                     cond, expr, cmd, prop, level + 1, indent + "    ", is_out);
@@ -247,11 +250,11 @@ class FEmitter
         {
             if (!p->attrs_ || !(p->attrs_->in_ || p->attrs_->inout_))
                 continue;
-            std::string argcount = pcount(p, "pargs_in->");
-            std::string argsize = psize(p, "pargs_in->");
+            std::string argcount = pcount(p, "_pargs_in->");
+            std::string argsize = psize(p, "_pargs_in->");
             std::string cmd = (p->attrs_->inout_) ? "OE_SET_IN_OUT_POINTER"
                                                   : "OE_SET_IN_POINTER";
-            out() << "    if (pargs_in->" + p->name_ + ")"
+            out() << "    if (_pargs_in->" + p->name_ + ")"
                   << "        " + cmd + "(" + p->name_ + ", " + argcount +
                          ", " + argsize + ", " + mtype_str(p) + ");";
 
@@ -260,17 +263,18 @@ class FEmitter
             if (!ut)
                 continue;
 
-            std::string count = count_attr_str(p->attrs_->count_, "pargs_in->");
+            std::string count =
+                count_attr_str(p->attrs_->count_, "_pargs_in->");
 
             if (count == "1" || count == "")
             {
-                std::string cond = "pargs_in->" + p->name_;
+                std::string cond = "_pargs_in->" + p->name_;
                 std::string expr = p->name_;
                 set_pointers_deep_copy(cond, expr, cmd, p, 2, "    ");
             }
             else
             {
-                std::string cond = "pargs_in->" + p->name_;
+                std::string cond = "_pargs_in->" + p->name_;
                 std::string expr = p->name_ + "[_i_1]";
                 out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
                              "; _i_1++)"
@@ -292,12 +296,12 @@ class FEmitter
             if (!p->attrs_ || !(p->attrs_->out_ || p->attrs_->inout_))
                 continue;
 
-            std::string argcount = pcount(p, "pargs_in->");
-            std::string argsize = psize(p, "pargs_in->");
+            std::string argcount = pcount(p, "_pargs_in->");
+            std::string argsize = psize(p, "_pargs_in->");
             std::string cmd = (p->attrs_->inout_)
                                   ? "OE_COPY_AND_SET_IN_OUT_POINTER"
                                   : "OE_SET_OUT_POINTER";
-            out() << "    if (pargs_in->" + p->name_ + ")"
+            out() << "    if (_pargs_in->" + p->name_ + ")"
                   << "        " + cmd + "(" + p->name_ + ", " + argcount +
                          ", " + argsize + ", " + mtype_str(p) + ");";
             empty = false;
@@ -308,18 +312,19 @@ class FEmitter
             if (!ut || (p->attrs_->out_ && !p->attrs_->inout_))
                 continue;
 
-            std::string count = count_attr_str(p->attrs_->count_, "pargs_in->");
+            std::string count =
+                count_attr_str(p->attrs_->count_, "_pargs_in->");
 
             if (count == "1" || count == "")
             {
-                std::string cond = "pargs_in->" + p->name_;
+                std::string cond = "_pargs_in->" + p->name_;
                 std::string expr = p->name_;
                 set_pointers_deep_copy(
                     cond, expr, cmd, p, 2, "    ", p->attrs_->out_);
             }
             else
             {
-                std::string cond = "pargs_in->" + p->name_;
+                std::string cond = "_pargs_in->" + p->name_;
                 std::string expr = p->name_ + "[_i_1]";
                 out() << "    for (size_t _i_1 = 0; _i_1 < " + count +
                              "; _i_1++)"
@@ -385,7 +390,7 @@ class FEmitter
     void compute_buffer_size_deep_copy_out(Function* f)
     {
         std::string buffer_size = "_deepcopy_out_buffer_size";
-        std::string prefix = "pargs_in->";
+        std::string prefix = "_pargs_in->";
         for (Decl* p : f->params_)
         {
             if (!p->attrs_)
@@ -427,8 +432,8 @@ class FEmitter
             if (!p->attrs_ || !(p->attrs_->string_ || p->attrs_->wstring_))
                 continue;
             out() << "    " + check + (p->attrs_->wstring_ ? "_WIDE" : "") +
-                         "(pargs_in->" + p->name_ + ", pargs_in->" + p->name_ +
-                         "_len);";
+                         "(_pargs_in->" + p->name_ + ", _pargs_in->" +
+                         p->name_ + "_len);";
             strs = true;
         }
         if (!strs)
@@ -439,7 +444,7 @@ class FEmitter
     void call_user_function(Function* f)
     {
         std::string retstr =
-            (f->rtype_->tag_ != Void) ? "pargs_out->_retval = " : "";
+            (f->rtype_->tag_ != Void) ? "_pargs_out->retval = " : "";
         out() << "    " + retstr + f->name_ + "(";
         size_t idx = 0;
         for (Decl* p : f->params_)
@@ -461,7 +466,7 @@ class FEmitter
                 if (s.find("const ") != std::string::npos)
                     type = "(" + s + ")";
             }
-            out() << "        " + type + "pargs_in->" + p->name_ +
+            out() << "        " + type + "_pargs_in->" + p->name_ +
                          (++idx < f->params_.size() ? "," : ");");
         }
         if (idx == 0)
@@ -519,7 +524,7 @@ class FEmitter
 
     void serialize_buffer_deep_copy_out(Function* f)
     {
-        std::string prefix = "pargs_in->";
+        std::string prefix = "_pargs_in->";
         for (Decl* p : f->params_)
         {
             if (!p->attrs_)
@@ -636,7 +641,7 @@ class FEmitter
             return;
         out() << "    /* Propagate errno back to enclave. */";
         if (f->errno_)
-            out() << "    pargs_out->_ocall_errno = errno;";
+            out() << "    _pargs_out->ocall_errno = errno;";
         else
             out() << "    /* Errno propagation not enabled. */";
         out() << "";
@@ -644,14 +649,14 @@ class FEmitter
 
     void write_result()
     {
-        std::string check = "output_buffer_size >= sizeof(*pargs_out)";
+        std::string check = "output_buffer_size >= sizeof(*_pargs_out)";
         if (ecall_)
             out() << "    if (" + check +
-                         " &&\n        oe_is_within_enclave(pargs_out, "
+                         " &&\n        oe_is_within_enclave(_pargs_out, "
                          "output_buffer_size))";
         else
-            out() << "    if (pargs_out && " + check + ")";
-        out() << "        pargs_out->_result = _result;";
+            out() << "    if (_pargs_out && " + check + ")";
+        out() << "        _pargs_out->result = _result;";
     }
 };
 
