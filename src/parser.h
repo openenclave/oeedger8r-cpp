@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "preprocessor.h"
+#include "warnings.h"
 
 class Parser
 {
@@ -23,6 +25,7 @@ class Parser
     std::string basename_;
     std::vector<std::string> searchpaths_;
     std::vector<std::string> defines_;
+    std::unordered_map<Warning, WarningState, WarningHash> warnings_;
 
     Lexer* lex_;
     Token t_;
@@ -90,6 +93,16 @@ class Parser
     void append_function(std::vector<Function*>& funcs, Function* f);
     void warn_allow_list(const std::string& fname);
     void warn_non_portable(Function* f);
+    void warn_function_return_ptr(const std::string& fname, Type* t);
+    void warn_ptr_in_local_struct(const std::string& sname, Decl* d);
+    void check_function_param(const std::string& fname, Decl* d);
+    void warn_foreign_ptr(
+        const std::string& fname,
+        const std::string& type,
+        const std::string& param);
+    void warn_ptr_in_function(
+        const std::string& fname,
+        const std::string& param);
     void error_size_count(Function* f);
     void check_size_count_decls(
         const std::string& parent_name,
@@ -108,6 +121,7 @@ class Parser
         const std::string& filename,
         const std::vector<std::string>& searchpaths,
         const std::vector<std::string>& defines,
+        const std::unordered_map<Warning, WarningState, WarningHash>& warnings,
         bool experimental);
     ~Parser();
 

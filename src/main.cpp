@@ -14,6 +14,38 @@
 #include <windows.h>
 #endif
 
+static Warning parse_warning_option(std::string& warning)
+{
+    if (warning == "all")
+        return Warning::All;
+    else if (warning == "error")
+        return Warning::Error;
+    else if (warning == "foreign-type-ptr")
+        return Warning::ForeignTypePtr;
+    else if (warning == "ptr-in-struct")
+        return Warning::PtrInStruct;
+    else if (warning == "ptr-in-function")
+        return Warning::PtrInFunction;
+    else if (warning == "return-ptr")
+        return Warning::ReturnPtr;
+    else
+        return Warning::Unknown;
+}
+
+bool operator>(WarningState l, WarningState r)
+{
+    /* The priority of the states from high to low is:
+     * Ignore, Error, Warning, Unknown.
+     */
+    if (l == r)
+        return false;
+    if (l == WarningState::Ignore || r == WarningState::Unknown)
+        return true;
+    if (l == WarningState::Error && r == WarningState::Warning)
+        return true;
+    return false;
+}
+
 static void _ensure_directory(const std::string& dir)
 {
 #if _WIN32
@@ -42,6 +74,20 @@ const char* usage =
     "--trusted-dir   <dir> Specify the directory for saving trusted code\n"
     "-D<name>              Define the name to be used by the C-style "
     "preprocessor\n"
+    "-W<warning>           Enable the specified warning\n"
+    "-Wforeign-type-ptr    Warn if a function includes the pointer of a "
+    "foreign type\n"
+    "                      as a parameter.\n"
+    "-Wptr-in-function     Warn if a function includes a pointer as a "
+    "parameter without\n"
+    "                      a direction attribute.\n"
+    "-Wptr-in-struct       Warn if a struct includes a pointer type as a "
+    "member\n"
+    "-Wreturn-ptr          Warn if a function returns a pointer type\n"
+    "-Wno-<warning>        Disable the specified warning\n"
+    "-Wall                 Enable all the available warnings\n"
+    "-Werror               Turn warnings into errors\n"
+    "-Werror=<warning>     Turn the specified warning into an error\n"
     "--experimental        Enable experimental features\n"
     "--help                Print this help message\n"
     "\n"
@@ -59,6 +105,7 @@ int main(int argc, char** argv)
     std::string trusted_dir = ".";
     std::vector<std::string> files;
     std::vector<std::string> defines;
+    std::unordered_map<Warning, WarningState, WarningHash> warnings;
     int i = 1;
 
     if (argc == 1)
@@ -79,6 +126,10 @@ int main(int argc, char** argv)
         }
         return fix_path_separators(argv[i]);
     };
+
+    /* Initialize the two special warning options. */
+    warnings[Warning::Error] = WarningState::Unknown;
+    warnings[Warning::All] = WarningState::Unknown;
 
     while (i < argc)
     {
@@ -109,6 +160,58 @@ int main(int argc, char** argv)
                 return -1;
             }
             defines.push_back(define);
+        }
+        else if (a.rfind("-W", 0) == 0)
+        {
+            std::string option;
+            WarningState state;
+            if (a.rfind("-Wno-", 0) == 0)
+            {
+                state = WarningState::Ignore;
+                option = a.substr(5);
+            }
+            else if (a.rfind("-Werror=", 0) == 0)
+            {
+                state = WarningState::Error;
+                option = a.substr(8);
+            }
+            else
+            {
+                state = WarningState::Warning;
+                option = a.substr(2);
+            }
+            Warning warning = parse_warning_option(option);
+            if (warning == Warning::Unknown)
+            {
+                fprintf(
+                    stderr, "error: unknown warning option '%s'\n", a.c_str());
+                fprintf(stderr, "%s", usage);
+                return -1;
+            }
+            if (state == WarningState::Error &&
+                (warning == Warning::Error || warning == Warning::All))
+            {
+                /* Error out -Werror=error and -Werror=all. */
+                fprintf(stderr, "error: invalid option '%s'\n", a.c_str());
+                fprintf(stderr, "%s", usage);
+                return -1;
+            }
+            if (warnings.find(warning) == warnings.end())
+            {
+                /* The warning option is not set yet. */
+                warnings[warning] = state;
+            }
+            else
+            {
+                /*
+                 * Only the state with higher priority can override the
+                 * existing state. In the current implementation, -Wno-
+                 * has the highest priority, which is followed by -Werror
+                 * or -Werror= and then -Wall or -W.
+                 */
+                if (state > warnings[warning])
+                    warnings[warning] = state;
+            }
         }
         else if (a == "--help")
         {
@@ -146,7 +249,7 @@ int main(int argc, char** argv)
 
     for (std::string& file : files)
     {
-        Parser p(file, searchpaths, defines, experimental);
+        Parser p(file, searchpaths, defines, warnings, experimental);
         Edl* edl = p.parse();
 
         if (gen_trusted)

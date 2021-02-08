@@ -31,11 +31,13 @@ Parser::Parser(
     const std::string& filename,
     const std::vector<std::string>& searchpaths,
     const std::vector<std::string>& defines,
+    const std::unordered_map<Warning, WarningState, WarningHash>& warnings,
     bool experimental)
     : filename_(filename),
       basename_(),
       searchpaths_(searchpaths),
       defines_(defines),
+      warnings_(warnings),
       lex_(),
       t_(),
       line_(1),
@@ -121,7 +123,7 @@ bool Parser::print_loc(
     int line,
     int col)
 {
-    if (msg_kind == "error")
+    if (msg_kind == "error" || msg_kind == "warning")
         fprintf(stderr, "%s: %s:%d:%d ", msg_kind.c_str(), filename, line, col);
     else
         printf("%s: %s:%d:%d ", msg_kind.c_str(), filename_.c_str(), line, col);
@@ -144,6 +146,14 @@ bool Parser::print_loc(
         fprintf(stderr, fmt, ##__VA_ARGS__);                \
         fprintf(stderr, "\n");                              \
         exit(1);                                            \
+    } while (0)
+
+#define WARNING(fmt, ...)                                     \
+    do                                                        \
+    {                                                         \
+        print_loc("warning", filename_.c_str(), line_, col_); \
+        fprintf(stderr, fmt, ##__VA_ARGS__);                  \
+        fprintf(stderr, "\n");                                \
     } while (0)
 
 Token Parser::get_preprocessed_token()
@@ -298,6 +308,7 @@ Edl* Parser::parse_import_file()
             std::string(t.start_ + 1, t.end_ - 1),
             searchpaths_,
             defines_,
+            warnings_,
             experimental_);
         edl = p.parse();
     }
@@ -493,6 +504,9 @@ void Parser::parse_struct_or_union(bool is_struct)
         Decl* decl = parse_decl();
         if (decl->attrs_ && !is_struct)
             ERROR("attributes are not allowed for unions");
+        if (is_struct && decl->type_->tag_ == Ptr &&
+            !has_size_or_count_attr(decl))
+            warn_ptr_in_local_struct(name, decl);
         type->fields_.push_back(decl);
         if (peek() != "}")
             expect(";");
@@ -579,6 +593,9 @@ Function* Parser::parse_function_decl(bool trusted)
             static_cast<std::string>(name).c_str());
     f->name_ = name;
 
+    if (f->rtype_->tag_ == Ptr)
+        warn_function_return_ptr(f->name_, f->rtype_);
+
     expect("(");
 
     // Handle (void)
@@ -587,7 +604,9 @@ Function* Parser::parse_function_decl(bool trusted)
 
     while (peek() != ')')
     {
-        f->params_.push_back(parse_decl());
+        Decl* decl = parse_decl();
+        check_function_param(f->name_, decl);
+        f->params_.push_back(decl);
         if (peek() != ')')
             expect(",");
     }
@@ -912,6 +931,159 @@ void Parser::warn_non_portable(Function* f)
             fprintf(stderr, fmt, f->name_.c_str(), "long", suggestion);
         else if (t->tag_ == Unsigned && t->t_->tag_ == Long)
             fprintf(stderr, fmt, f->name_.c_str(), "unsigned long", suggestion);
+    }
+}
+
+void Parser::warn_function_return_ptr(const std::string& fname, Type* t)
+{
+    const char* fmt = "Function '%s': The function returns a pointer, which "
+                      "could expose memory "
+                      "addresses across the host-enclave boundary. Consider "
+                      "passing the pointer as "
+                      "an out parameter instead [-Wreturn-ptr].";
+
+    WarningState state = WarningState::Unknown;
+    if (warnings_.find(Warning::ReturnPtr) != warnings_.end())
+        state = warnings_[Warning::ReturnPtr];
+
+    /* Bypass the warning if -Wno-return-ptr is specified. */
+    if (state == WarningState::Ignore)
+        return;
+
+    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
+     * option. */
+    if (state != WarningState::Unknown ||
+        warnings_[Warning::All] == WarningState::Warning)
+    {
+        /* warnings_[Warning::Error] == Warning represents the -Werror option.
+         */
+        if (state == WarningState::Error ||
+            warnings_[Warning::Error] == WarningState::Warning)
+            ERROR(fmt, fname.c_str());
+        else
+            WARNING(fmt, fname.c_str());
+    }
+}
+
+void Parser::warn_ptr_in_local_struct(const std::string& sname, Decl* d)
+{
+    const char* fmt =
+        "struct '%s': The member '%s' is a pointer that is not serializable. "
+        "Consider annotating the member with the `count' or `size' attribute "
+        "[-Wptr-in-struct].";
+
+    WarningState state = WarningState::Unknown;
+    if (warnings_.find(Warning::PtrInStruct) != warnings_.end())
+        state = warnings_[Warning::PtrInStruct];
+
+    /* Bypass the warning if -Wno-ptr-in-struct is specified. */
+    if (state == WarningState::Ignore)
+        return;
+
+    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
+     * option. */
+    if (state != WarningState::Unknown ||
+        warnings_[Warning::All] == WarningState::Warning)
+    {
+        /* warnings_[Warning::Error] == WarningState::Warning represents the
+         * -Werror option. */
+        if (state == WarningState::Error ||
+            warnings_[Warning::Error] == WarningState::Warning)
+            ERROR(fmt, sname.c_str(), d->name_.c_str());
+        else
+            WARNING(fmt, sname.c_str(), d->name_.c_str());
+    }
+}
+
+void Parser::check_function_param(const std::string& fname, Decl* d)
+{
+    if (d->attrs_ && d->attrs_->user_check_)
+        return;
+
+    Type* type = d->type_;
+    /* Only check if the parameter is a pointer. */
+    if (type->tag_ != Ptr)
+        return;
+
+    if (!d->attrs_)
+        warn_ptr_in_function(fname, d->name_);
+
+    /* Unwrap the pointer and const types. */
+    type = type->t_;
+    if (type->tag_ == Const)
+        type = type->t_;
+
+    /* Check if we have the local definition of the type. */
+    UserType* ut = get_user_type(types_, type->name_);
+    if (ut)
+        return;
+
+    warn_foreign_ptr(fname, type->name_, d->name_);
+}
+
+void Parser::warn_ptr_in_function(
+    const std::string& fname,
+    const std::string& param)
+{
+    const char* fmt =
+        "Function '%s': '%s' is a pointer that is not serializable. "
+        "Consider annotating the parameter with the direction annotation "
+        "[-Wptr-in-function].";
+
+    WarningState state = WarningState::Unknown;
+    if (warnings_.find(Warning::PtrInFunction) != warnings_.end())
+        state = warnings_[Warning::PtrInFunction];
+
+    /* Bypass the warning if -Wno-ptr-in-function is specified. */
+    if (state == WarningState::Ignore)
+        return;
+
+    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
+     * option. */
+    if (state != WarningState::Unknown ||
+        warnings_[Warning::All] == WarningState::Warning)
+    {
+        /* warnings_[Warning::Error] == WarningState::Warning represents the
+         * -Werror option. */
+        if (state == WarningState::Error ||
+            warnings_[Warning::Error] == WarningState::Warning)
+            ERROR(fmt, fname.c_str(), param.c_str());
+        else
+            WARNING(fmt, fname.c_str(), param.c_str());
+    }
+}
+
+void Parser::warn_foreign_ptr(
+    const std::string& fname,
+    const std::string& type,
+    const std::string& param)
+{
+    const char* fmt =
+        "Function '%s': '%s' is a pointer of a foreign type '%s' that may not "
+        "be serializable. "
+        "Consider defining the type in the EDL file with proper annotations "
+        "[-Wforeign-type-ptr].";
+
+    WarningState state = WarningState::Unknown;
+    if (warnings_.find(Warning::ForeignTypePtr) != warnings_.end())
+        state = warnings_[Warning::ForeignTypePtr];
+
+    /* Bypass the warning if -Wno-foreign-type-ptr is specified. */
+    if (state == WarningState::Ignore)
+        return;
+
+    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
+     * option. */
+    if (state != WarningState::Unknown ||
+        warnings_[Warning::All] == WarningState::Warning)
+    {
+        /* warnings_[Warning::Error] == WarningState::Warning represents the
+         * -Werror option. */
+        if (state == WarningState::Error ||
+            warnings_[Warning::Error] == WarningState::Warning)
+            ERROR(fmt, fname.c_str(), param.c_str(), type.c_str());
+        else
+            WARNING(fmt, fname.c_str(), param.c_str(), type.c_str());
     }
 }
 

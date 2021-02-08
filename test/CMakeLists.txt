@@ -11,6 +11,7 @@ add_subdirectory(import)
 add_subdirectory(prefix)
 add_subdirectory(preprocessor)
 add_subdirectory(safe_math)
+add_subdirectory(warnings)
 
 # Virtual Mode execution for tests.
 add_subdirectory(virtual)
