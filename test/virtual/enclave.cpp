@@ -10,15 +10,15 @@ extern "C"
 {
     oe_enclave_t* _enclave;
 
-    extern "C" oe_ecall_func_t __oe_ecalls_table[];
-    extern "C" size_t __oe_ecalls_table_size;
+    extern "C" oe_ecall_func_t oe_ecalls_table[];
+    extern "C" size_t oe_ecalls_table_size;
 
     OE_EXPORT
     void set_enclave_object(oe_enclave_t* enclave)
     {
         _enclave = enclave;
-        _enclave->_ecall_table = __oe_ecalls_table;
-        _enclave->_num_ecalls = static_cast<uint32_t>(__oe_ecalls_table_size);
+        _enclave->_ecall_table = oe_ecalls_table;
+        _enclave->_num_ecalls = static_cast<uint32_t>(oe_ecalls_table_size);
     }
 
     bool oe_is_within_enclave(const void* ptr, uint64_t size)

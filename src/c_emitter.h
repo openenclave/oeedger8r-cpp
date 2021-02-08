@@ -125,9 +125,9 @@ class CEmitter
               << "               flags,"
               << "               settings,"
               << "               setting_count,"
-              << "               __" + edl_->name_ + "_ocall_function_table,"
+              << "               _" + edl_->name_ + "_ocall_function_table,"
               << "               " + to_str(edl_->untrusted_funcs_.size()) + ","
-              << "               __" + edl_->name_ + "_ecall_info_table,"
+              << "               _" + edl_->name_ + "_ecall_info_table,"
               << "                " + to_str(edl_->trusted_funcs_.size()) + ","
               << "               enclave);"
               << "}"
@@ -151,7 +151,7 @@ class CEmitter
 
     void trusted_function_names()
     {
-        out() << "static const oe_ecall_info_t __" + edl_->name_ +
+        out() << "static const oe_ecall_info_t _" + edl_->name_ +
                      "_ecall_info_table[] = "
               << "{";
         for (Function* f : edl_->trusted_funcs_)
@@ -191,12 +191,12 @@ class CEmitter
         (void)ocall;
         out() << "typedef struct _" + f->name_ + "_args_t"
               << "{"
-              << "    oe_result_t _result;"
+              << "    oe_result_t result;"
               << "    uint8_t* deepcopy_out_buffer;"
               << "    size_t deepcopy_out_buffer_size;";
         indent_ = "    ";
         if (f->rtype_->tag_ != Void)
-            out() << atype_str(f->rtype_) + " _retval;";
+            out() << atype_str(f->rtype_) + " retval;";
         for (Decl* p : f->params_)
         {
             out() << mdecl_str(p->name_, p->type_, p->dims_, p->attrs_) + ";";
@@ -204,7 +204,7 @@ class CEmitter
                 out() << "size_t " + p->name_ + "_len;";
         }
         if (f->errno_)
-            out() << "int _ocall_errno;";
+            out() << "int ocall_errno;";
         indent_ = "";
         out() << "} " + f->name_ + "_args_t;"
               << "";
@@ -212,21 +212,21 @@ class CEmitter
 
     void ecalls_table()
     {
-        out() << "oe_ecall_func_t __oe_ecalls_table[] = {";
+        out() << "oe_ecall_func_t oe_ecalls_table[] = {";
         size_t idx = 0;
         for (Function* f : edl_->trusted_funcs_)
             out() << "    (oe_ecall_func_t) ecall_" + f->name_ +
                          (++idx < edl_->trusted_funcs_.size() ? "," : "");
         out() << "};"
               << ""
-              << "size_t __oe_ecalls_table_size = "
-                 "OE_COUNTOF(__oe_ecalls_table);"
+              << "size_t oe_ecalls_table_size = "
+                 "OE_COUNTOF(oe_ecalls_table);"
               << "";
     }
 
     void ocalls_table()
     {
-        out() << "static oe_ocall_func_t __" + edl_->name_ +
+        out() << "static oe_ocall_func_t _" + edl_->name_ +
                      "_ocall_function_table[] = {";
         for (Function* f : edl_->untrusted_funcs_)
             out() << "    (oe_ocall_func_t) ocall_" + f->name_ + ",";

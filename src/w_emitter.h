@@ -161,7 +161,7 @@ class WEmitter
         {
             out() << "             enclave,"
                   << "             &global_id,"
-                  << "             __" + edl_->name_ + "_ecall_info_table[" +
+                  << "             _" + edl_->name_ + "_ecall_info_table[" +
                          fcn_id + "].name,";
         }
         else
@@ -181,7 +181,7 @@ class WEmitter
             << "    OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));"
             << "    "
             << "    /* Check if the call succeeded. */"
-            << "    if ((_result = _pargs_out->_result) != OE_OK)"
+            << "    if ((_result = _pargs_out->result) != OE_OK)"
             << "        goto done;"
             << ""
             << "    /* Currently exactly _output_buffer_size bytes must be "
@@ -194,7 +194,7 @@ class WEmitter
             << ""
             << "    /* Unmarshal return value and out, in-out parameters. */";
         if (f->rtype_->tag_ != Void)
-            out() << "    *_retval = _pargs_out->_retval;";
+            out() << "    *_retval = _pargs_out->retval;";
         else
             out() << "    /* No return value. */";
         out() << "";
@@ -720,7 +720,7 @@ class WEmitter
             return;
         out() << "    /* Retrieve propagated errno from OCALL. */";
         if (f->errno_)
-            out() << "    oe_errno = _pargs_out->_ocall_errno;"
+            out() << "    oe_errno = _pargs_out->ocall_errno;"
                   << "";
         else
             out() << "    /* Errno propagation not enabled. */";
