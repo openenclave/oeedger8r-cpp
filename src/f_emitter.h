@@ -67,16 +67,15 @@ class FEmitter
                   << "    size_t _deepcopy_out_buffer_size = 0;"
                   << "";
         }
-        out()
-            << "    size_t _input_buffer_offset = 0;"
-            << "    size_t _output_buffer_offset = 0;"
-            << "    OE_ADD_SIZE(_input_buffer_offset, 1, sizeof(*_pargs_in));"
-            << "    OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));"
-            << ""
-            << "    if (input_buffer_size < sizeof(*_pargs_in) || "
-               "output_buffer_size < sizeof(*_pargs_in))"
-            << "        goto done;"
-            << "";
+        out() << "    size_t _input_buffer_offset = 0;"
+              << "    size_t _output_buffer_offset = 0;"
+              << "    OE_ADD_SIZE(_input_buffer_offset, sizeof(*_pargs_in));"
+              << "    OE_ADD_SIZE(_output_buffer_offset, sizeof(*_pargs_out));"
+              << ""
+              << "    if (input_buffer_size < sizeof(*_pargs_in) || "
+                 "output_buffer_size < sizeof(*_pargs_in))"
+              << "        goto done;"
+              << "";
         if (ecall_)
             ecall_buffer_checks();
         else
@@ -357,7 +356,7 @@ class FEmitter
             std::string argsize = psize(prop, parent_expr + op);
             std::string cond = parent_condition + " && " + expr;
             out() << indent + "if (" + cond + ")"
-                  << indent + "    OE_ADD_SIZE(" + buffer_size + ", " +
+                  << indent + "    OE_ADD_ARG_SIZE(" + buffer_size + ", " +
                          argcount + ", " + argsize + ");";
 
             UserType* ut = get_user_type_for_deep_copy(edl_, prop);

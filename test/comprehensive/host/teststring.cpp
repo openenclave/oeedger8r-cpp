@@ -46,21 +46,21 @@ oe_result_t ecall_string_no_null_terminator_modified(
 
     /* Compute input buffer size. Include in and in-out parameters. */
     OE_ADD_SIZE(
-        _input_buffer_size, 1, sizeof(ecall_string_no_null_terminator_args_t));
+        _input_buffer_size, sizeof(ecall_string_no_null_terminator_args_t));
     if (s1)
-        OE_ADD_SIZE(_input_buffer_size, _args.s1_len, sizeof(char));
+        OE_ADD_ARG_SIZE(_input_buffer_size, _args.s1_len, sizeof(char));
     if (s2)
-        OE_ADD_SIZE(_input_buffer_size, _args.s2_len, sizeof(char));
+        OE_ADD_ARG_SIZE(_input_buffer_size, _args.s2_len, sizeof(char));
 
     /* Compute output buffer size. Include out and in-out parameters. */
     OE_ADD_SIZE(
-        _output_buffer_size, 1, sizeof(ecall_string_no_null_terminator_args_t));
+        _output_buffer_size, sizeof(ecall_string_no_null_terminator_args_t));
     if (s2)
-        OE_ADD_SIZE(_output_buffer_size, _args.s2_len, sizeof(char));
+        OE_ADD_ARG_SIZE(_output_buffer_size, _args.s2_len, sizeof(char));
 
     /* Allocate marshalling buffer */
     _total_buffer_size = _input_buffer_size;
-    OE_ADD_SIZE(_total_buffer_size, 1, _output_buffer_size);
+    OE_ADD_SIZE(_total_buffer_size, _output_buffer_size);
 
     _buffer = (uint8_t*)malloc(_total_buffer_size);
     _input_buffer = _buffer;
@@ -73,7 +73,7 @@ oe_result_t ecall_string_no_null_terminator_modified(
 
     /* Serialize buffer inputs (in and in-out parameters) */
     _pargs_in = (ecall_string_no_null_terminator_args_t*)_input_buffer;
-    OE_ADD_SIZE(_input_buffer_offset, 1, sizeof(*_pargs_in));
+    OE_ADD_SIZE(_input_buffer_offset, sizeof(*_pargs_in));
 
     OE_WRITE_IN_PARAM(s1, _args.s1_len, sizeof(char), char*);
     OE_WRITE_IN_OUT_PARAM(s2, _args.s2_len, sizeof(char), char*);
@@ -96,7 +96,7 @@ oe_result_t ecall_string_no_null_terminator_modified(
 
     /* Set up output arg struct pointer */
     _pargs_out = (ecall_string_no_null_terminator_args_t*)_output_buffer;
-    OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));
+    OE_ADD_SIZE(_output_buffer_offset, sizeof(*_pargs_out));
 
     /* Check if the call succeeded */
     if ((_result = _pargs_out->result) != OE_OK)
@@ -156,23 +156,21 @@ oe_result_t ecall_wstring_no_null_terminator_modified(
 
     /* Compute input buffer size. Include in and in-out parameters. */
     OE_ADD_SIZE(
-        _input_buffer_size, 1, sizeof(ecall_wstring_no_null_terminator_args_t));
+        _input_buffer_size, sizeof(ecall_wstring_no_null_terminator_args_t));
     if (s1)
-        OE_ADD_SIZE(_input_buffer_size, _args.s1_len, sizeof(wchar_t));
+        OE_ADD_ARG_SIZE(_input_buffer_size, _args.s1_len, sizeof(wchar_t));
     if (s2)
-        OE_ADD_SIZE(_input_buffer_size, _args.s2_len, sizeof(wchar_t));
+        OE_ADD_ARG_SIZE(_input_buffer_size, _args.s2_len, sizeof(wchar_t));
 
     /* Compute output buffer size. Include out and in-out parameters. */
     OE_ADD_SIZE(
-        _output_buffer_size,
-        1,
-        sizeof(ecall_wstring_no_null_terminator_args_t));
+        _output_buffer_size, sizeof(ecall_wstring_no_null_terminator_args_t));
     if (s2)
-        OE_ADD_SIZE(_output_buffer_size, _args.s2_len, sizeof(wchar_t));
+        OE_ADD_ARG_SIZE(_output_buffer_size, _args.s2_len, sizeof(wchar_t));
 
     /* Allocate marshalling buffer */
     _total_buffer_size = _input_buffer_size;
-    OE_ADD_SIZE(_total_buffer_size, 1, _output_buffer_size);
+    OE_ADD_SIZE(_total_buffer_size, _output_buffer_size);
 
     _buffer = (uint8_t*)malloc(_total_buffer_size);
     _input_buffer = _buffer;
@@ -185,7 +183,7 @@ oe_result_t ecall_wstring_no_null_terminator_modified(
 
     /* Serialize buffer inputs (in and in-out parameters) */
     _pargs_in = (ecall_wstring_no_null_terminator_args_t*)_input_buffer;
-    OE_ADD_SIZE(_input_buffer_offset, 1, sizeof(*_pargs_in));
+    OE_ADD_SIZE(_input_buffer_offset, sizeof(*_pargs_in));
 
     OE_WRITE_IN_PARAM(s1, _args.s1_len, sizeof(wchar_t), wchar_t*);
     OE_WRITE_IN_OUT_PARAM(s2, _args.s2_len, sizeof(wchar_t), wchar_t*);
@@ -208,7 +206,7 @@ oe_result_t ecall_wstring_no_null_terminator_modified(
 
     /* Set up output arg struct pointer */
     _pargs_out = (ecall_wstring_no_null_terminator_args_t*)_output_buffer;
-    OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));
+    OE_ADD_SIZE(_output_buffer_offset, sizeof(*_pargs_out));
 
     /* Check if the call succeeded */
     if ((_result = _pargs_out->result) != OE_OK)

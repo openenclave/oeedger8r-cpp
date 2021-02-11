@@ -139,7 +139,7 @@ class WEmitter
             << "    "
             << "    /* Allocate marshalling buffer. */"
             << "    _total_buffer_size = _input_buffer_size;"
-            << "    OE_ADD_SIZE(_total_buffer_size, 1, _output_buffer_size);"
+            << "    OE_ADD_SIZE(_total_buffer_size, _output_buffer_size);"
             << "    _buffer = (uint8_t*)" + alloc_fcn + "(_total_buffer_size);"
             << "    _input_buffer = _buffer;"
             << "    _output_buffer = _buffer + _input_buffer_size;"
@@ -168,31 +168,30 @@ class WEmitter
         {
             out() << "             " + fcn_id + ",";
         }
-        out()
-            << "             _input_buffer,"
-            << "             _input_buffer_size,"
-            << "             _output_buffer,"
-            << "             _output_buffer_size,"
-            << "             &_output_bytes_written)) != OE_OK)"
-            << "        goto done;"
-            << ""
-            << "    /* Setup output arg struct pointer. */"
-            << "    _pargs_out = (" + args_t + "*)_output_buffer;"
-            << "    OE_ADD_SIZE(_output_buffer_offset, 1, sizeof(*_pargs_out));"
-            << "    "
-            << "    /* Check if the call succeeded. */"
-            << "    if ((_result = _pargs_out->result) != OE_OK)"
-            << "        goto done;"
-            << ""
-            << "    /* Currently exactly _output_buffer_size bytes must be "
-               "written. */"
-            << "    if (_output_bytes_written != _output_buffer_size)"
-            << "    {"
-            << "        _result = OE_FAILURE;"
-            << "        goto done;"
-            << "    }"
-            << ""
-            << "    /* Unmarshal return value and out, in-out parameters. */";
+        out() << "             _input_buffer,"
+              << "             _input_buffer_size,"
+              << "             _output_buffer,"
+              << "             _output_buffer_size,"
+              << "             &_output_bytes_written)) != OE_OK)"
+              << "        goto done;"
+              << ""
+              << "    /* Setup output arg struct pointer. */"
+              << "    _pargs_out = (" + args_t + "*)_output_buffer;"
+              << "    OE_ADD_SIZE(_output_buffer_offset, sizeof(*_pargs_out));"
+              << "    "
+              << "    /* Check if the call succeeded. */"
+              << "    if ((_result = _pargs_out->result) != OE_OK)"
+              << "        goto done;"
+              << ""
+              << "    /* Currently exactly _output_buffer_size bytes must be "
+                 "written. */"
+              << "    if (_output_bytes_written != _output_buffer_size)"
+              << "    {"
+              << "        _result = OE_FAILURE;"
+              << "        goto done;"
+              << "    }"
+              << ""
+              << "    /* Unmarshal return value and out, in-out parameters. */";
         if (f->rtype_->tag_ != Void)
             out() << "    *_retval = _pargs_out->retval;";
         else
@@ -308,7 +307,7 @@ class WEmitter
             std::string argsize = psize(prop, "_args." + parent_expr + op);
             std::string cond = parent_condition + " && " + expr;
             out() << indent + "if (" + cond + ")"
-                  << indent + "    OE_ADD_SIZE(" + buffer_size + ", " +
+                  << indent + "    OE_ADD_ARG_SIZE(" + buffer_size + ", " +
                          argcount + ", " + argsize + ");";
 
             UserType* ut = get_user_type_for_deep_copy(edl_, prop);
@@ -341,7 +340,7 @@ class WEmitter
     {
         std::string buffer_size =
             input ? "_input_buffer_size" : "_output_buffer_size";
-        out() << "    OE_ADD_SIZE(" + buffer_size + ", 1, sizeof(" + f->name_ +
+        out() << "    OE_ADD_SIZE(" + buffer_size + ", sizeof(" + f->name_ +
                      "_args_t));";
         bool empty = true;
         for (Decl* p : f->params_)
@@ -356,8 +355,8 @@ class WEmitter
             std::string argcount = pcount(p, "_args.");
             std::string argsize = psize(p, "_args.");
             out() << "    if (" + p->name_ + ")"
-                  << "        OE_ADD_SIZE(" + buffer_size + ", " + argcount +
-                         ", " + argsize + ");";
+                  << "        OE_ADD_ARG_SIZE(" + buffer_size + ", " +
+                         argcount + ", " + argsize + ");";
             empty = false;
 
             /* Skip the nested pointers if the parameter is not
@@ -449,9 +448,8 @@ class WEmitter
 
     void serialize_buffer_inputs(Function* f)
     {
-        out()
-            << "    _pargs_in = (" + f->name_ + "_args_t*)_input_buffer;"
-            << "    OE_ADD_SIZE(_input_buffer_offset, 1, sizeof(*_pargs_in));";
+        out() << "    _pargs_in = (" + f->name_ + "_args_t*)_input_buffer;"
+              << "    OE_ADD_SIZE(_input_buffer_offset, sizeof(*_pargs_in));";
         bool empty = true;
         for (Decl* p : f->params_)
         {
@@ -521,7 +519,7 @@ class WEmitter
             out()
                 << indent + "    " + p_type + " _rhs = (" + p_type +
                        ") (_output_buffer + _output_buffer_offset); (void)_rhs;"
-                << indent + "    OE_ADD_SIZE(_output_buffer_offset, " +
+                << indent + "    OE_ADD_ARG_SIZE(_output_buffer_offset, " +
                        argcount + ", " + argsize + ");";
 
             std::string count = count_attr_str(p->attrs_->count_, parent_expr);
