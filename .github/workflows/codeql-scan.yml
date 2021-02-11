@@ -1,0 +1,40 @@
+name: 'Scheduled CodeQL Security Scan'
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    container:
+      image: oeciteam/oetools-minimal-18.04:latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Checkout Submodules
+      run: |
+        git submodule init
+        git submodule update
+        echo $GITHUB_WORKSPACE
+        echo $PWD
+        ls -alR
+
+    - name: Run CodeQL Scan
+      run: |
+        cd .ci/openenclave-security
+        export SCAN_PATH=$GITHUB_WORKSPACE && bash scripts/run.sh
+
+    - name: Verify SARIF file
+      id: sarif_file
+      uses: andstor/file-existence-action@v1
+      with:
+        files: ".ci/openenclave-security/build/OpenEnclave.sarif"
+
+    - name: Upload SARIF file
+      if: steps.sarif_file.outputs.files_exists == 'true'
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: .ci/openenclave-security/build/OpenEnclave.sarif
