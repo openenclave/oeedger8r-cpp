@@ -6,7 +6,7 @@ function (add_warnings_test test_name options pass_re fail_re)
     NAME oeedger8r_${test_name}
     COMMAND oeedger8r --header-only --search-path ${CMAKE_CURRENT_SOURCE_DIR}
             -D${test_name} ${options} warnings.edl)
-  if (${fail_re})
+  if (fail_re)
     set_tests_properties(
       oeedger8r_${test_name} PROPERTIES PASS_REGULAR_EXPRESSION "${pass_re}"
                                         FAIL_REGULAR_EXPRESSION "${fail_re}")
@@ -20,7 +20,7 @@ function (add_werror_test test_name options pass_re fail_re)
   add_test(NAME oeedger8r_${test_name}
            COMMAND oeedger8r --header-only --search-path
                    ${CMAKE_CURRENT_SOURCE_DIR} ${options} werror.edl)
-  if (${fail_re})
+  if (fail_re)
     set_tests_properties(
       oeedger8r_${test_name} PROPERTIES PASS_REGULAR_EXPRESSION "${pass_re}"
                                         FAIL_REGULAR_EXPRESSION "${fail_re}")
@@ -167,6 +167,20 @@ add_warnings_test(
   "-Wforeign-type-ptr"
   ""
   "warning: .* Function 'func': 's' is a pointer of a foreign type 'MyStruct' that may not be serializable. Consider defining the type in the EDL file with proper annotations .-Wforeign-type-ptr."
+)
+
+add_warnings_test(
+  NON_FOREIGN_TYPE_PTR_TYPE3
+  "-Wforeign-type-ptr"
+  ""
+  "warning: .* Function 'func': 's' is a pointer of a foreign type .* that may not be serializable. Consider defining the type in the EDL file with proper annotations .-Wforeign-type-ptr."
+)
+
+add_warnings_test(
+  NON_FOREIGN_TYPE_PTR_TYPE4
+  "-Wforeign-type-ptr"
+  ""
+  "warning: .* Function 'func': 's' is a pointer of a foreign type .* that may not be serializable. Consider defining the type in the EDL file with proper annotations .-Wforeign-type-ptr."
 )
 
 add_werror_test(

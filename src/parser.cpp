@@ -1013,12 +1013,13 @@ void Parser::check_function_param(const std::string& fname, Decl* d)
     if (type->tag_ == Const)
         type = type->t_;
 
-    /* Check if we have the local definition of the type. */
+    /*
+     * Warn if we do not have the local definition of the type.
+     * Note that a foreign type can also be a struct.
+     */
     UserType* ut = get_user_type(types_, type->name_);
-    if (ut)
-        return;
-
-    warn_foreign_ptr(fname, type->name_, d->name_);
+    if ((type->tag_ == Foreign || type->tag_ == Struct) && !ut)
+        warn_foreign_ptr(fname, type->name_, d->name_);
 }
 
 void Parser::warn_ptr_in_function(
