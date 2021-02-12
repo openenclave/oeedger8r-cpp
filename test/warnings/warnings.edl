@@ -110,5 +110,11 @@ enclave
 #ifdef NON_FOREIGN_TYPE_PTR_TYPE2
         void func(MyStruct* s);
 #endif
+#ifdef NON_FOREIGN_TYPE_PTR_TYPE3
+        void func(void* s);
+#endif
+#ifdef NON_FOREIGN_TYPE_PTR_TYPE4
+        void func(size_t* s);
+#endif
     };
 };
