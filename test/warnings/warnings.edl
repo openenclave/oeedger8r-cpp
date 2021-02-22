@@ -116,5 +116,18 @@ enclave
 #ifdef NON_FOREIGN_TYPE_PTR_TYPE4
         void func(size_t* s);
 #endif
+
+#ifdef UNSUPPORTED_ALLOW_TYPE1
+        // The `allow` keyword allows an ECALL be declared as private and is used
+        // only by the OCALL using the keyword. However, the keyword is currently
+        // not supported.
+        void func() allow(ecall);
+#endif
+#ifdef UNSUPPORTED_ALLOW_TYPE2
+        // The `allow` keyword allows an ECALL be declared as private and is used
+        // only by the OCALL using the keyword. However, the keyword is currently
+        // not supported.
+        void func() allow(ecall1, ecall2, ecall3);
+#endif
     };
 };

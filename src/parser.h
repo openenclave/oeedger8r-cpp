@@ -91,10 +91,19 @@ class Parser
     void append_include(const std::string& inc);
     void append_type(UserType* type);
     void append_function(std::vector<Function*>& funcs, Function* f);
-    void warn_allow_list(const std::string& fname);
-    void warn_non_portable(Function* f);
+    void warn_or_err(Warning option, Token* token, const char* fmt, ...);
+    void warn_unsupported_allow(const std::string& fname);
+    void check_non_portable_type(Function* function);
+    void warn_non_portable_type(
+        const std::string& fname,
+        const std::string& type);
     void warn_function_return_ptr(const std::string& fname, Type* t);
     void warn_ptr_in_local_struct(const std::string& sname, Decl* d);
+    void warn_signed_size_or_count(
+        Token* token,
+        const std::string& type,
+        const std::string& name,
+        const std::string& param);
     void check_function_param(const std::string& fname, Decl* d);
     void warn_foreign_ptr(
         const std::string& fname,

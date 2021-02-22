@@ -2,6 +2,11 @@
 // Licensed under the MIT License.
 
 enclave {
+    struct MyStruct {
+        int size;
+        [size = size] char* buf;
+    };
+
     trusted {
         // Signed size should generate a warning.
         public void signed_size(

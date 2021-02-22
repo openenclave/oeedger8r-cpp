@@ -9,9 +9,12 @@ enum class Warning
     All,
     Error,
     ForeignTypePtr,
+    NonPortableType,
     PtrInStruct,
     PtrInFunction,
     ReturnPtr,
+    SignedSizeOrCount,
+    UnsupportedAllow,
     Unknown
 };
 

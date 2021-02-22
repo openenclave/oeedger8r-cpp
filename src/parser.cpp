@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <algorithm>
+#include <cstdarg>
 #include <cstddef>
 #include <map>
 
@@ -130,29 +131,37 @@ bool Parser::print_loc(
     return true;
 }
 
-#define ERROR_AT(t, fmt, ...)                                   \
-    do                                                          \
-    {                                                           \
-        print_loc("error", filename_.c_str(), t.line_, t.col_); \
-        fprintf(stderr, fmt, ##__VA_ARGS__);                    \
-        fprintf(stderr, "\n");                                  \
-        exit(1);                                                \
+#define ERROR_AT(t, format, ...)                                    \
+    do                                                              \
+    {                                                               \
+        print_loc("error", filename_.c_str(), (t).line_, (t).col_); \
+        fprintf(stderr, format, ##__VA_ARGS__);                     \
+        fprintf(stderr, "\n");                                      \
+        exit(1);                                                    \
     } while (0)
 
-#define ERROR(fmt, ...)                                     \
+#define ERROR(format, ...)                                  \
     do                                                      \
     {                                                       \
         print_loc("error", filename_.c_str(), line_, col_); \
-        fprintf(stderr, fmt, ##__VA_ARGS__);                \
+        fprintf(stderr, format, ##__VA_ARGS__);             \
         fprintf(stderr, "\n");                              \
         exit(1);                                            \
     } while (0)
 
-#define WARNING(fmt, ...)                                     \
+#define WARNING_AT(t, format, ...)                                    \
+    do                                                                \
+    {                                                                 \
+        print_loc("warning", filename_.c_str(), (t).line_, (t).col_); \
+        fprintf(stderr, format, ##__VA_ARGS__);                       \
+        fprintf(stderr, "\n");                                        \
+    } while (0)
+
+#define WARNING(format, ...)                                  \
     do                                                        \
     {                                                         \
         print_loc("warning", filename_.c_str(), line_, col_); \
-        fprintf(stderr, fmt, ##__VA_ARGS__);                  \
+        fprintf(stderr, format, ##__VA_ARGS__);               \
         fprintf(stderr, "\n");                                \
     } while (0)
 
@@ -534,7 +543,7 @@ void Parser::parse_trusted()
             // TODO: Report location.
             fprintf(
                 stderr,
-                "error: Function '%s': 'private' specifier is not supported by "
+                "error: Function `%s': `private' specifier is not supported by "
                 "oeedger8r\n",
                 trusted_funcs_.back()->name_.c_str());
             exit(1);
@@ -559,25 +568,28 @@ void Parser::parse_untrusted()
 
 void Parser::parse_allow_list(bool trusted, const std::string& fname)
 {
-    if (!trusted)
+    if (peek() == "allow")
     {
-        if (peek() == "allow")
+        if (trusted)
+            ERROR("the `allow' syntax is invalid for a trusted function "
+                  "(ECALL).");
+
+        next();
+        expect("(");
+        while (peek() != ")")
         {
-            next();
-            expect("(");
-            while (peek() != ")")
-            {
-                Token t = next();
-                if (!t.is_name())
-                    ERROR(
-                        "expecting identifier, got %s",
-                        static_cast<std::string>(t).c_str());
-                if (peek() != ")")
-                    expect(",");
-            }
-            expect(")");
-            warn_allow_list(fname);
+            Token t = next();
+            if (!t.is_name())
+                ERROR(
+                    "expecting identifier, got %s",
+                    static_cast<std::string>(t).c_str());
+            if (peek() != ")")
+                expect(",");
         }
+        expect(")");
+
+        if (!trusted)
+            warn_unsupported_allow(fname);
     }
 }
 
@@ -628,7 +640,7 @@ Function* Parser::parse_function_decl(bool trusted)
     }
     expect(";");
 
-    warn_non_portable(f);
+    check_non_portable_type(f);
     error_size_count(f);
     check_size_count_decls(f->name_, f->params_);
     check_deep_copy_struct_by_value(f);
@@ -901,22 +913,61 @@ Dims* Parser::parse_dims()
     return dims;
 }
 
-void Parser::warn_allow_list(const std::string& fname)
+void Parser::warn_or_err(Warning option, Token* token, const char* format, ...)
 {
-    fprintf(
-        stderr,
-        "Warning: Function '%s': Reentrant ocalls are not supported by "
-        "Open Enclave. Allow list ignored.\n",
-        fname.c_str());
+    WarningState state = WarningState::Unknown;
+    if (warnings_.find(option) != warnings_.end())
+        state = warnings_[option];
+
+    /* Bypass the warning if the -W<option> is specified. */
+    if (state == WarningState::Ignore)
+        return;
+
+    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
+     * option. */
+    if (state != WarningState::Unknown ||
+        warnings_[Warning::All] == WarningState::Warning)
+    {
+        /* Arguments forwarding. */
+        const size_t MESSAGE_SIZE = 256;
+        char message[MESSAGE_SIZE] = {'\0'};
+        va_list arguments;
+        va_start(arguments, format);
+        vsnprintf(message, MESSAGE_SIZE, format, arguments);
+        va_end(arguments);
+
+        /* warnings_[Warning::Error] == Warning represents the -Werror option.
+         */
+        if (state == WarningState::Error ||
+            warnings_[Warning::Error] == WarningState::Warning)
+        {
+            if (token)
+                ERROR_AT(*token, "%s", message);
+            else
+                ERROR("%s", message);
+        }
+        else
+        {
+            if (token)
+                WARNING_AT(*token, "%s", message);
+            else
+                WARNING("%s", message);
+        }
+    }
 }
 
-void Parser::warn_non_portable(Function* f)
+void Parser::warn_unsupported_allow(const std::string& fname)
 {
-    const char* fmt =
-        "Warning: Function '%s': %s has different sizes on Windows and "
-        "Linux. This enclave cannot be built in Linux and then safely "
-        "loaded in Windows.%s\n";
-    const char* suggestion = " Consider using uint64_t or uint32_t instead.";
+    const char* format =
+        "Function `%s': the `allow' syntax is currently unsupported. "
+        "Ignored [-Wunsupported-allow].";
+
+    warn_or_err(Warning::UnsupportedAllow, nullptr, format, fname.c_str());
+}
+
+void Parser::check_non_portable_type(Function* f)
+{
+    std::string type;
     for (Decl* p : f->params_)
     {
         Type* t = p->type_;
@@ -924,75 +975,55 @@ void Parser::warn_non_portable(Function* f)
             t = t->t_;
 
         if (t->tag_ == WChar)
-            fprintf(stderr, fmt, f->name_.c_str(), "wchar_t", "");
+            type = "wchar_t";
         else if (t->tag_ == LDouble)
-            fprintf(stderr, fmt, f->name_.c_str(), "long double", "");
+            type = "long double";
         else if (t->tag_ == Long)
-            fprintf(stderr, fmt, f->name_.c_str(), "long", suggestion);
+            type = "long";
         else if (t->tag_ == Unsigned && t->t_->tag_ == Long)
-            fprintf(stderr, fmt, f->name_.c_str(), "unsigned long", suggestion);
+            type = "unsigned long";
+
+        if (!type.empty())
+        {
+            warn_non_portable_type(f->name_, type);
+            type.clear();
+        }
     }
+}
+
+void Parser::warn_non_portable_type(
+    const std::string& fname,
+    const std::string& type)
+{
+    const char* format =
+        "warning: Function `%s': `%s' has different sizes on Windows and "
+        "Linux. This enclave cannot be built in Linux and then safely "
+        "loaded in Windows [-Wnon-portable-type].";
+
+    warn_or_err(
+        Warning::NonPortableType, nullptr, format, fname.c_str(), type.c_str());
 }
 
 void Parser::warn_function_return_ptr(const std::string& fname, Type* t)
 {
-    const char* fmt = "Function '%s': The function returns a pointer, which "
-                      "could expose memory "
-                      "addresses across the host-enclave boundary. Consider "
-                      "passing the pointer as "
-                      "an out parameter instead [-Wreturn-ptr].";
+    const char* format = "Function `%s': The function returns a pointer, which "
+                         "could expose memory "
+                         "addresses across the host-enclave boundary. Consider "
+                         "passing the pointer as "
+                         "an out parameter instead [-Wreturn-ptr].";
 
-    WarningState state = WarningState::Unknown;
-    if (warnings_.find(Warning::ReturnPtr) != warnings_.end())
-        state = warnings_[Warning::ReturnPtr];
-
-    /* Bypass the warning if -Wno-return-ptr is specified. */
-    if (state == WarningState::Ignore)
-        return;
-
-    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
-     * option. */
-    if (state != WarningState::Unknown ||
-        warnings_[Warning::All] == WarningState::Warning)
-    {
-        /* warnings_[Warning::Error] == Warning represents the -Werror option.
-         */
-        if (state == WarningState::Error ||
-            warnings_[Warning::Error] == WarningState::Warning)
-            ERROR(fmt, fname.c_str());
-        else
-            WARNING(fmt, fname.c_str());
-    }
+    warn_or_err(Warning::ReturnPtr, nullptr, format, fname.c_str());
 }
 
 void Parser::warn_ptr_in_local_struct(const std::string& sname, Decl* d)
 {
-    const char* fmt =
-        "struct '%s': The member '%s' is a pointer that is not serializable. "
+    const char* format =
+        "struct `%s': The member `%s' is a pointer that is not serializable. "
         "Consider annotating the member with the `count' or `size' attribute "
         "[-Wptr-in-struct].";
 
-    WarningState state = WarningState::Unknown;
-    if (warnings_.find(Warning::PtrInStruct) != warnings_.end())
-        state = warnings_[Warning::PtrInStruct];
-
-    /* Bypass the warning if -Wno-ptr-in-struct is specified. */
-    if (state == WarningState::Ignore)
-        return;
-
-    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
-     * option. */
-    if (state != WarningState::Unknown ||
-        warnings_[Warning::All] == WarningState::Warning)
-    {
-        /* warnings_[Warning::Error] == WarningState::Warning represents the
-         * -Werror option. */
-        if (state == WarningState::Error ||
-            warnings_[Warning::Error] == WarningState::Warning)
-            ERROR(fmt, sname.c_str(), d->name_.c_str());
-        else
-            WARNING(fmt, sname.c_str(), d->name_.c_str());
-    }
+    warn_or_err(
+        Warning::PtrInStruct, nullptr, format, sname.c_str(), d->name_.c_str());
 }
 
 void Parser::check_function_param(const std::string& fname, Decl* d)
@@ -1026,32 +1057,13 @@ void Parser::warn_ptr_in_function(
     const std::string& fname,
     const std::string& param)
 {
-    const char* fmt =
-        "Function '%s': '%s' is a pointer that is not serializable. "
+    const char* format =
+        "Function `%s': `%s' is a pointer that is not serializable. "
         "Consider annotating the parameter with the direction annotation "
         "[-Wptr-in-function].";
 
-    WarningState state = WarningState::Unknown;
-    if (warnings_.find(Warning::PtrInFunction) != warnings_.end())
-        state = warnings_[Warning::PtrInFunction];
-
-    /* Bypass the warning if -Wno-ptr-in-function is specified. */
-    if (state == WarningState::Ignore)
-        return;
-
-    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
-     * option. */
-    if (state != WarningState::Unknown ||
-        warnings_[Warning::All] == WarningState::Warning)
-    {
-        /* warnings_[Warning::Error] == WarningState::Warning represents the
-         * -Werror option. */
-        if (state == WarningState::Error ||
-            warnings_[Warning::Error] == WarningState::Warning)
-            ERROR(fmt, fname.c_str(), param.c_str());
-        else
-            WARNING(fmt, fname.c_str(), param.c_str());
-    }
+    warn_or_err(
+        Warning::PtrInFunction, nullptr, format, fname.c_str(), param.c_str());
 }
 
 void Parser::warn_foreign_ptr(
@@ -1059,33 +1071,38 @@ void Parser::warn_foreign_ptr(
     const std::string& type,
     const std::string& param)
 {
-    const char* fmt =
-        "Function '%s': '%s' is a pointer of a foreign type '%s' that may not "
+    const char* format =
+        "Function `%s': `%s' is a pointer of a foreign type `%s' that may not "
         "be serializable. "
         "Consider defining the type in the EDL file with proper annotations "
         "[-Wforeign-type-ptr].";
 
-    WarningState state = WarningState::Unknown;
-    if (warnings_.find(Warning::ForeignTypePtr) != warnings_.end())
-        state = warnings_[Warning::ForeignTypePtr];
+    warn_or_err(
+        Warning::ForeignTypePtr,
+        nullptr,
+        format,
+        fname.c_str(),
+        param.c_str(),
+        type.c_str());
+}
 
-    /* Bypass the warning if -Wno-foreign-type-ptr is specified. */
-    if (state == WarningState::Ignore)
-        return;
+void Parser::warn_signed_size_or_count(
+    Token* token,
+    const std::string& type,
+    const std::string& name,
+    const std::string& param)
+{
+    const char* format =
+        "%s `%s': The size or count parameter `%s' should not be signed "
+        "[-Wsigned-size-or-count].";
 
-    /* warnings_[Warning::All] == WarningState::Warning represents the -Wall
-     * option. */
-    if (state != WarningState::Unknown ||
-        warnings_[Warning::All] == WarningState::Warning)
-    {
-        /* warnings_[Warning::Error] == WarningState::Warning represents the
-         * -Werror option. */
-        if (state == WarningState::Error ||
-            warnings_[Warning::Error] == WarningState::Warning)
-            ERROR(fmt, fname.c_str(), param.c_str(), type.c_str());
-        else
-            WARNING(fmt, fname.c_str(), param.c_str(), type.c_str());
-    }
+    warn_or_err(
+        Warning::SignedSizeOrCount,
+        token,
+        format,
+        type.c_str(),
+        name.c_str(),
+        param.c_str());
 }
 
 void Parser::error_size_count(Function* f)
@@ -1097,8 +1114,8 @@ void Parser::error_size_count(Function* f)
         {
             fprintf(
                 stderr,
-                "error: Function '%s': simultaneous 'size' and 'count' "
-                "parameters 'size' and 'count' are not supported by "
+                "error: Function `%s': simultaneous `size' and `count' "
+                "parameters `size' and `count' are not supported by "
                 "oeedger8r.",
                 f->name_.c_str());
             exit(1);
@@ -1148,7 +1165,7 @@ void Parser::check_size_count_decls(
             if (sc_decl == nullptr)
                 ERROR_AT(
                     t,
-                    "could not find declaration for '%s'.",
+                    "could not find declaration for `%s'.",
                     static_cast<std::string>(t).c_str());
 
             /*
@@ -1191,7 +1208,7 @@ void Parser::check_size_count_decls(
                 !sc_decl->attrs_->is_size_or_count_)
                 ERROR_AT(
                     t,
-                    "unexpected error with '%s'.",
+                    "unexpected error with `%s'.",
                     static_cast<std::string>(t).c_str());
 
             Type* ty = sc_decl->type_;
@@ -1216,14 +1233,11 @@ void Parser::check_size_count_decls(
                 case Int32:
                 case Int64:
                 {
-                    fprintf(
-                        stderr,
-                        "Warning: %s '%s': Size or count parameter '%s' should "
-                        "not "
-                        "be signed.\n",
+                    warn_signed_size_or_count(
+                        &t,
                         in_function_ ? "Function" : "struct",
                         parent_name.c_str(),
-                        static_cast<std::string>(t).c_str());
+                        static_cast<std::string>(t));
                     continue;
                 }
 
@@ -1258,9 +1272,9 @@ void Parser::check_deep_copy_struct_by_value(Function* f)
             {
                 fprintf(
                     stderr,
-                    "error: the structure declaration \"%s\" specifies a "
+                    "error: the structure declaration `%s' specifies a "
                     "deep copy is expected. Referenced by value in function "
-                    "\"%s\" detected.",
+                    "`%s' detected.",
                     type->name_.c_str(),
                     f->name_.c_str());
                 exit(1);
