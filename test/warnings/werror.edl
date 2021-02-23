@@ -5,7 +5,7 @@ enclave
 {
     struct MyStruct
     {
-       size_t size;
+       int size;
        int* p;
     };
 
@@ -16,5 +16,7 @@ enclave
         void bar(TestStruct* s);
 
         void abc(int* s);
+
+        void baz() allow(ecall);
     };
 };

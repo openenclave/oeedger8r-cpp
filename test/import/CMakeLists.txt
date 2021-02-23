@@ -80,7 +80,7 @@ add_test(
           --search-path ${CMAKE_CURRENT_SOURCE_DIR}/import_dir2)
 set_tests_properties(
   oeedger8r_import_search_path_order1
-  PROPERTIES PASS_REGULAR_EXPRESSION "Warning: Function 'import_dir1_ecall'")
+  PROPERTIES PASS_REGULAR_EXPRESSION "warning: Function `import_dir1_ecall'")
 
 # Ensure that a.edl is picked up from first search-path. Warning will be raised
 # for function import_dir2_ecall.
@@ -90,7 +90,7 @@ add_test(
           --search-path ${CMAKE_CURRENT_SOURCE_DIR}/import_dir1)
 set_tests_properties(
   oeedger8r_import_search_path_order2
-  PROPERTIES PASS_REGULAR_EXPRESSION "Warning: Function 'import_dir2_ecall'")
+  PROPERTIES PASS_REGULAR_EXPRESSION "warning: Function `import_dir2_ecall'")
 
 # Lockdown printing of imported file being processed.
 add_test(

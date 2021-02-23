@@ -165,12 +165,12 @@ add_attributes_test(SIZE_PLAIN_TYPE "`size' is invalid for plain type `mytype'"
                     "")
 
 add_attributes_test(COUNT_INVALID_PROP1
-                    "could not find declaration for 'count_prop'" "")
+                    "could not find declaration for `count_prop'" "")
 
 add_attributes_test(COUNT_INVALID_PROP2 "size/count has invalid type" "")
 
 add_attributes_test(SIZE_INVALID_PROP1
-                    "could not find declaration for 'size_prop'" "")
+                    "could not find declaration for `size_prop'" "")
 
 add_attributes_test(SIZE_INVALID_PROP2 "size/count has invalid type" "")
 
@@ -230,17 +230,17 @@ add_attributes_test(STRUCT_SIZE_PLAIN_TYPE
                     "`size' is invalid for plain type `mytype'" "")
 
 add_attributes_test(STRUCT_COUNT_INVALID_PROP1
-                    "could not find declaration for 'p_count'" "")
+                    "could not find declaration for `p_count'" "")
 
 add_attributes_test(STRUCT_COUNT_INVALID_PROP2 "size/count has invalid type" "")
 
 add_attributes_test(STRUCT_COUNT_INVALID_PROP3
-                    "could not find declaration for 'p_count'" "")
+                    "could not find declaration for `p_count'" "")
 
 add_attributes_test(STRUCT_SIZE_INVALID_PROP1
-                    "could not find declaration for 'p_size'" "")
+                    "could not find declaration for `p_size'" "")
 
 add_attributes_test(STRUCT_SIZE_INVALID_PROP2 "size/count has invalid type" "")
 
 add_attributes_test(STRUCT_SIZE_INVALID_PROP3
-                    "could not find declaration for 'p_size'" "")
+                    "could not find declaration for `p_size'" "")

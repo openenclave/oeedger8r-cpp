@@ -2,6 +2,11 @@
 // Licensed under the MIT License.
 
 enclave {
+    struct MyStruct {
+        int count;
+        [count = count] char* buf;
+    };
+
     trusted {
         // Signed count should generate a warning.
         public void signed_count(
