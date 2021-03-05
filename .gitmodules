@@ -1,4 +1,0 @@
-[submodule "openenclave-security"]
-  path = .ci/openenclave-security
-  url = https://github.com/openenclave/openenclave-security.git
-  branch = master
