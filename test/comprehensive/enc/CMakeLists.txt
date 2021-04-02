@@ -16,10 +16,8 @@ add_custom_command(
           ../edl/string.edl
           ../edl/struct.edl
           ../edl/switchless.edl
-  COMMAND
-    oeedger8r --experimental --trusted --search-path
-    ${CMAKE_CURRENT_SOURCE_DIR}/../edl --search-path
-    ${CMAKE_CURRENT_SOURCE_DIR}/../moreedl all.edl)
+  COMMAND oeedger8r --trusted --search-path ${CMAKE_CURRENT_SOURCE_DIR}/../edl
+          --search-path ${CMAKE_CURRENT_SOURCE_DIR}/../moreedl all.edl)
 
 add_custom_command(
   OUTPUT bar_t.h bar_args.h
