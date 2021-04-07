@@ -22,14 +22,19 @@
 #include <openenclave/bits/types.h>
 #include <openenclave/edger8r/common.h>
 
-#include <openenclave/corelibc/errno.h>
-#include <openenclave/corelibc/stdlib.h>
-#include <openenclave/corelibc/string.h>
-#include <openenclave/corelibc/wchar.h>
-
+#include <errno.h>
+#include <stdlib.h>
 #include <stdlib.h> // for malloc
+#include <string.h>
+#include <wchar.h>
 
 OE_EXTERNC_BEGIN
+
+extern int* __oe_errno_location(void);
+#define oe_errno *__oe_errno_location()
+
+#define oe_strlen strlen
+#define oe_wcslen wcslen
 
 /**
  * The type of a function in ecall function table
