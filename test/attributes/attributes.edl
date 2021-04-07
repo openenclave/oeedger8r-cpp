@@ -122,9 +122,6 @@ enclave
 #ifdef OUT_TYPE2
         void func([out] mytype x);
 #endif
-#ifdef OUT_USER_TYPE_PTR
-        void func([out] MyStruct* s);
-#endif
 #ifdef IN_USER_TYPE_PTR_ARRAY
         void func([in] MyStruct* s[8]);
 #endif

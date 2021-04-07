@@ -1437,20 +1437,6 @@ void Parser::validate_attributes(Decl* d)
 
             if (d->type_->tag_ == Ptr)
             {
-                UserType* ut = get_user_type_for_deep_copy(types_, d);
-                if (ut)
-                {
-                    /* Deep-copy out parameter is currently an experimental
-                     * feature. */
-                    if (!experimental_ && in_function_ && attrs->out_ &&
-                        !attrs->inout_)
-                        ERROR_AT(
-                            itr.second,
-                            "`out' for user defined type `%s' requires the "
-                            "--experimental option",
-                            atype_str(type).c_str());
-                }
-
                 if (d->dims_)
                 {
                     ERROR_AT(
