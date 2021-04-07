@@ -160,7 +160,7 @@ void test_wstring_edl_ocalls()
     if (!g_enabled[TYPE_WCHAR_T])
         return;
 
-    swprintf(str, 50, L"%lS", str_value);
+    swprintf(str, 50, L"%ls", str_value);
 
     // char*
     OE_TEST(ocall_wstring_fun1(str) == OE_OK);
@@ -175,7 +175,7 @@ void test_wstring_edl_ocalls()
     OE_TEST(wcscmp(str, L"Goodbye\n") == 0);
 
     // Restore value.
-    swprintf(str, 50, L"%lS", str_value);
+    swprintf(str, 50, L"%ls", str_value);
 
     // char* user check.
     OE_TEST(ocall_wstring_fun5(str) == OE_OK);

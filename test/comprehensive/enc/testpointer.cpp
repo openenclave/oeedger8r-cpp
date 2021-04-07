@@ -3,10 +3,10 @@
 
 #include "../edltestutils.h"
 
-#include <openenclave/corelibc/string.h>
 #include <openenclave/enclave.h>
 #include <openenclave/internal/tests.h>
 #include <stdio.h>
+#include <string.h>
 #include <algorithm>
 #include "all_t.h"
 

@@ -393,7 +393,7 @@ void test_wstring_edl_ecalls(oe_enclave_t* enclave)
     if (!g_enabled[TYPE_WCHAR_T])
         return;
 
-    swprintf(str, sizeof(str) / sizeof(wchar_t), L"%lS", str_value);
+    swprintf(str, sizeof(str) / sizeof(wchar_t), L"%ls", str_value);
 
     // wchar_t*
     OE_TEST(ecall_wstring_fun1(enclave, str) == OE_OK);
@@ -408,7 +408,7 @@ void test_wstring_edl_ecalls(oe_enclave_t* enclave)
     OE_TEST(wcscmp(str, L"Goodbye\n") == 0);
 
     // Restore value.
-    swprintf(str, sizeof(str) / sizeof(wchar_t), L"%lS", str_value);
+    swprintf(str, sizeof(str) / sizeof(wchar_t), L"%ls", str_value);
 
     // wchar_t* user check.
     OE_TEST(ecall_wstring_fun5(enclave, str) == OE_OK);

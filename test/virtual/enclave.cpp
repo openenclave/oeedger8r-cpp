@@ -38,18 +38,6 @@ extern "C"
 
     size_t strlen(const char*);
 
-    size_t oe_strlen(const char* str)
-    {
-        return strlen(str);
-    }
-
-    size_t wcslen(const wchar_t*);
-
-    size_t oe_wcslen(const wchar_t* str)
-    {
-        return wcslen(str);
-    }
-
     void* oe_allocate_ocall_buffer(size_t size)
     {
         return _enclave->malloc(size);
