@@ -535,7 +535,7 @@ class FEmitter
             if (!ut || !p->attrs_->out_ || p->attrs_->inout_)
                 continue;
 
-            std::string count = count_attr_str(p->attrs_->count_, "_");
+            std::string count = count_attr_str(p->attrs_->count_, prefix);
             std::string cmd = "OE_WRITE_DEEPCOPY_OUT_PARAM";
             std::string mt = mtype_str(p);
 
@@ -578,8 +578,7 @@ class FEmitter
          */
         out() << indent + "if (" + lhs_expr + ")" << indent + "{";
         {
-            std::string count =
-                count_attr_str(p->attrs_->count_, parent_rhs_expr);
+            std::string count = pcount(p, parent_rhs_expr);
             std::string idx = "_i_" + to_str(level);
 
             out() << indent + "    for (size_t " + idx + " = 0; " + idx +

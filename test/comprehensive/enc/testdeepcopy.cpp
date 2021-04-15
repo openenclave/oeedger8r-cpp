@@ -8,6 +8,7 @@
 #include <openenclave/internal/tests.h>
 #include <stdio.h>
 #include <string.h>
+#include <array>
 #include "all_t.h"
 
 #define oe_strcmp strcmp
@@ -21,6 +22,56 @@ static uint64_t data[8] = {0x1112131415161718,
                            0x7172737475767778,
                            0x8182838485868788};
 
+static void set_sizeparam(
+    SizeParamStruct* s,
+    size_t count,
+    size_t size,
+    int pattern)
+{
+    s->count = count;
+    s->size = size;
+    s->ptr = (uint64_t*)malloc(size);
+    memset(s->ptr, pattern, size);
+}
+
+static void check_sizeparam(
+    SizeParamStruct* s,
+    size_t count,
+    size_t size,
+    int pattern)
+{
+    OE_TEST(s->count == count);
+    OE_TEST(s->size == size);
+    for (size_t i = 0; i < size; i++)
+        OE_TEST(((char*)s->ptr)[i] == pattern);
+}
+
+static void set_countparam(
+    CountParamStruct* s,
+    size_t count,
+    size_t size,
+    int pattern,
+    int allocation)
+{
+    s->count = count;
+    s->size = size;
+    if (allocation)
+        s->ptr = (uint64_t*)malloc(count * sizeof(s->ptr[0]));
+    for (size_t i = 0; i < count; i++)
+        s->ptr[i] = pattern;
+}
+
+static void check_countparam(
+    CountParamStruct* s,
+    size_t count,
+    size_t size,
+    int pattern)
+{
+    OE_TEST(s->count == count);
+    OE_TEST(s->size == size);
+    for (size_t i = 0; i < count; i++)
+        OE_TEST(s->ptr[i] == pattern);
+}
 // Assert that the struct is copied by value, such that `s.ptr` is the
 // address of `data[]` in the host (also passed via `ptr`).
 void deepcopy_value(ShallowStruct s, uint64_t* ptr)
@@ -223,6 +274,17 @@ void deepcopy_countparamarray(CountParamStruct* s)
     OE_TEST(oe_is_within_enclave(s[1].ptr, s[1].count * sizeof(uint64_t)));
 }
 
+void deepcopy_countparamarray_n(CountParamStruct* s, size_t n)
+{
+    OE_TEST(n == 3);
+    check_countparam(&s[0], 1, 1, 'A');
+    check_countparam(&s[1], 2, 1, 'B');
+    check_countparam(&s[2], 3, 1, 'C');
+    set_countparam(&s[0], 1, 1, 'D', 0);
+    set_countparam(&s[1], 2, 1, 'E', 0);
+    set_countparam(&s[2], 3, 1, 'F', 0);
+}
+
 // Assert that the struct array is deep-copied such that each
 // element's `ptr` has a copy of its `size` bytes of `data` in enclave
 // memory.
@@ -372,6 +434,18 @@ void deepcopy_countparamarray_out(CountParamStruct* s)
     s[1].ptr = (uint64_t*)malloc(s[1].count * sizeof(uint64_t));
     for (size_t i = 0; i < s[1].count; ++i)
         s[1].ptr[i] = data[i];
+}
+
+void deepcopy_countparamarray_n_out(CountParamStruct* s, size_t n)
+{
+    OE_TEST(s != NULL);
+    OE_TEST(s->count == 0);
+    OE_TEST(s->size == 0);
+    OE_TEST(s->ptr == NULL);
+    OE_TEST(n == 3);
+    set_countparam(&s[0], 5, 64, 'A', 1);
+    set_countparam(&s[1], 4, 32, 'B', 1);
+    set_countparam(&s[2], 3, 16, 'C', 1);
 }
 
 void deepcopy_countparamarray_partial_out(CountParamStruct* s)
@@ -625,30 +699,6 @@ void deepcopy_multiple_nested_partial_out(MultipleNestedStruct* n)
     }
 }
 
-static void set_sizeparam(
-    SizeParamStruct* s,
-    size_t count,
-    size_t size,
-    int pattern)
-{
-    s->count = count;
-    s->size = size;
-    s->ptr = (uint64_t*)malloc(size);
-    memset(s->ptr, pattern, size);
-}
-
-static void check_sizeparam(
-    SizeParamStruct* s,
-    size_t count,
-    size_t size,
-    int pattern)
-{
-    OE_TEST(s->count == count);
-    OE_TEST(s->size == size);
-    for (size_t i = 0; i < size; i++)
-        OE_TEST(((char*)s->ptr)[i] == pattern);
-}
-
 void deepcopy_mix(
     SizeParamStruct* s_in,
     SizeParamStruct* s_inout,
@@ -693,10 +743,25 @@ void test_struct(const T& s, size_t size = 8, size_t offset = 0)
 }
 
 template <typename T>
+void test_structs(const std::array<T, 2>& s)
+{
+    test_struct(s[0]);
+    test_struct(s[1], 4, 4);
+}
+
+template <typename T>
 T init_struct()
 {
     T s = T{7ULL, 64ULL, data};
     test_struct(s);
+    return s;
+}
+
+template <typename T>
+std::array<T, 2> init_structs()
+{
+    std::array<T, 2> s = {init_struct<T>(), T{3ULL, 32ULL, &data[4]}};
+    test_structs(s);
     return s;
 }
 
@@ -712,6 +777,24 @@ void test_deepcopy_ocalls()
         // match the value set by the callee.
         OE_TEST(s.size == 200);
         test_struct(s, s.count);
+    }
+
+    {
+        auto s = init_structs<CountParamStruct>();
+        OE_TEST(ocall_deepcopy_countparamarray(s.data()) == OE_OK);
+        test_struct(s[0], 7);
+        test_struct(s[1], 3, 4);
+    }
+
+    {
+        CountParamStruct s[3] = {0};
+        set_countparam(&s[0], 1, 1, 'A', 1);
+        set_countparam(&s[1], 2, 1, 'B', 1);
+        set_countparam(&s[2], 3, 1, 'C', 1);
+        OE_TEST(ocall_deepcopy_countparamarray_n(s, 3) == OE_OK);
+        check_countparam(&s[0], 1, 1, 'D');
+        check_countparam(&s[1], 2, 1, 'E');
+        check_countparam(&s[2], 3, 1, 'F');
     }
 
     {
@@ -800,6 +883,16 @@ void test_deepcopy_ocalls()
         OE_TEST(s[1].count == 4);
         OE_TEST(s[1].size == 32);
         for (int i = 0; i < 2; i++)
+            free(s[i].ptr);
+    }
+
+    {
+        CountParamStruct s[3] = {0};
+        OE_TEST(ocall_deepcopy_countparamarray_n_out(s, 3) == OE_OK);
+        check_countparam(&s[0], 5, 64, 'A');
+        check_countparam(&s[1], 4, 32, 'B');
+        check_countparam(&s[2], 3, 16, 'C');
+        for (int i = 0; i < 3; i++)
             free(s[i].ptr);
     }
 

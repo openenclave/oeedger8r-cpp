@@ -3,13 +3,11 @@
 
 enclave
 {
-#ifdef OUT_USER_TYPE_PTR
-    struct MyStruct
+    struct TestStruct
     {
        size_t size;
        [size=size] int* p;
     };
-#endif
 
     untrusted
     {
@@ -123,13 +121,13 @@ enclave
         void func([out] mytype x);
 #endif
 #ifdef IN_USER_TYPE_PTR_ARRAY
-        void func([in] MyStruct* s[8]);
+        void func([in] TestStruct* s[8]);
 #endif
 #ifdef OUT_USER_TYPE_PTR_ARRAY
-        void func([out] MyStruct* s[8]);
+        void func([out] TestStruct* s[8]);
 #endif
 #ifdef INOUT_USER_TYPE_PTR_ARRAY
-        void func([in, out] MyStruct* s[8]);
+        void func([in, out] TestStruct* s[8]);
 #endif
 
 // Checks for count/size
@@ -159,6 +157,15 @@ enclave
 #endif
 #ifdef SIZE_INVALID_PROP2
         void func([size = size_prop, in] int* x, int* size_prop);
+#endif
+#ifdef SIZE_USER_TYPE_IN_PTR
+        void func([size = 1, in] TestStruct* x);
+#endif
+#ifdef SIZE_USER_TYPE_OUT_PTR
+        void func([size = 1, out] TestStruct* x);
+#endif
+#ifdef SIZE_USER_TYPE_INOUT_PTR
+        void func([size = 1, in, out] TestStruct* x);
 #endif
     };
 

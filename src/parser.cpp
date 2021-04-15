@@ -1437,6 +1437,17 @@ void Parser::validate_attributes(Decl* d)
 
             if (d->type_->tag_ == Ptr)
             {
+                UserType* ut = get_user_type_for_deep_copy(types_, d);
+                if (ut)
+                {
+                    if (!attrs->size_.is_empty())
+                        ERROR_AT(
+                            itr.second,
+                            "size attributes are invalid for the pointer of an "
+                            "user-defined type `%s'",
+                            ut->name_.c_str());
+                }
+
                 if (d->dims_)
                 {
                     ERROR_AT(
