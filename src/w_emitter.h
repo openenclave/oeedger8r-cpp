@@ -522,11 +522,10 @@ class WEmitter
                 << indent + "    OE_ADD_ARG_SIZE(_output_buffer_offset, " +
                        argcount + ", " + argsize + ");";
 
-            std::string count = count_attr_str(p->attrs_->count_, parent_expr);
             std::string idx = "_i_" + to_str(level);
 
             out() << indent + "    for (size_t " + idx + " = 0; " + idx +
-                         " < " + count + "; " + idx + "++)"
+                         " < " + argcount + "; " + idx + "++)"
                   << indent + "    {";
 
             /* First iteration: Find struct members that are not user-defined
@@ -649,7 +648,7 @@ class WEmitter
     void unmarshal_deep_copy_out(Decl* p)
     {
         std::string cmd = "OE_SET_DEEPCOPY_OUT_PARAM";
-        std::string count = count_attr_str(p->attrs_->count_, "_");
+        std::string count = count_attr_str(p->attrs_->count_);
         std::string mt = mtype_str(p);
 
         if (count == "1" || count == "")

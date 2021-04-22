@@ -244,14 +244,8 @@ inline std::string pcount(Decl* p, const std::string& prefix = "")
     if (p->type_->tag_ == Foreign && p->attrs_ && p->attrs_->isary_)
         return "1";
 
-    if (!p->attrs_->size_.is_empty() && !p->attrs_->count_.is_empty())
-        return count_attr_str(p->attrs_->size_, prefix);
-
     if (p->attrs_ && !p->attrs_->count_.is_empty())
         return count_attr_str(p->attrs_->count_, prefix);
-
-    if (p->attrs_ && !p->attrs_->size_.is_empty())
-        return "1";
 
     return "1";
 }
@@ -270,12 +264,6 @@ inline std::string psize(Decl* p, const std::string& prefix = "")
         s = "sizeof(" + replace(atype_str(p->type_->t_), "const ", "") + ")";
     else if (p->type_->tag_ == Foreign && p->attrs_ && p->attrs_->isptr_)
         s = "sizeof(*(" + p->type_->name_ + ")0)";
-
-    if (!p->attrs_->size_.is_empty() && !p->attrs_->count_.is_empty())
-        return size_attr_str(p->attrs_->count_, prefix);
-
-    if (p->attrs_ && !p->attrs_->count_.is_empty())
-        return s;
 
     if (p->attrs_ && !p->attrs_->size_.is_empty())
         return size_attr_str(p->attrs_->size_, prefix);

@@ -169,6 +169,21 @@ add_attributes_test(SIZE_INVALID_PROP1
 
 add_attributes_test(SIZE_INVALID_PROP2 "size/count has invalid type" "")
 
+add_attributes_test(
+  SIZE_USER_TYPE_IN_PTR
+  "size attributes are invalid for the pointer of an user-defined type `TestStruct'"
+  "")
+
+add_attributes_test(
+  SIZE_USER_TYPE_OUT_PTR
+  "size attributes are invalid for the pointer of an user-defined type `TestStruct'"
+  "")
+
+add_attributes_test(
+  SIZE_USER_TYPE_INOUT_PTR
+  "size attributes are invalid for the pointer of an user-defined type `TestStruct'"
+  "")
+
 # Attributes are not supported for unions.
 add_attributes_test(UNION_UNSUPPORTED "attributes are not allowed for unions"
                     "")
