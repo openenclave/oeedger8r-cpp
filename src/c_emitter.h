@@ -191,12 +191,12 @@ class CEmitter
         (void)ocall;
         out() << "typedef struct _" + f->name_ + "_args_t"
               << "{"
-              << "    oe_result_t result;"
+              << "    oe_result_t oe_result;"
               << "    uint8_t* deepcopy_out_buffer;"
               << "    size_t deepcopy_out_buffer_size;";
         indent_ = "    ";
         if (f->rtype_->tag_ != Void)
-            out() << atype_str(f->rtype_) + " retval;";
+            out() << atype_str(f->rtype_) + " oe_retval;";
         for (Decl* p : f->params_)
         {
             out() << mdecl_str(p->name_, p->type_, p->dims_, p->attrs_) + ";";
