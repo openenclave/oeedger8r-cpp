@@ -443,7 +443,7 @@ class FEmitter
     void call_user_function(Function* f)
     {
         std::string retstr =
-            (f->rtype_->tag_ != Void) ? "_pargs_out->retval = " : "";
+            (f->rtype_->tag_ != Void) ? "_pargs_out->oe_retval = " : "";
         out() << "    " + retstr + f->name_ + "(";
         size_t idx = 0;
         for (Decl* p : f->params_)
@@ -654,7 +654,7 @@ class FEmitter
                          "output_buffer_size))";
         else
             out() << "    if (_pargs_out && " + check + ")";
-        out() << "        _pargs_out->result = _result;";
+        out() << "        _pargs_out->oe_result = _result;";
     }
 };
 
