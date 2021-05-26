@@ -19,10 +19,10 @@ endif ()
 # This must be done before `project` command.
 if (UNIX)
   if (NOT DEFINED ENV{CC} AND NOT DEFINED CMAKE_C_COMPILER)
-    find_program(CMAKE_C_COMPILER clang-8 clang)
+    find_program(CMAKE_C_COMPILER clang-10 clang)
   endif ()
   if (NOT DEFINED ENV{CXX} AND NOT DEFINED CMAKE_CXX_COMPILER)
-    find_program(CMAKE_CXX_COMPILER clang++-8 clang++)
+    find_program(CMAKE_CXX_COMPILER clang++-10 clang++)
   endif ()
 endif ()
 
