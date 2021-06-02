@@ -698,17 +698,18 @@ Attrs* Parser::parse_attributes()
         return nullptr;
 
     next();
-    Attrs* attrs = new Attrs{false,
-                             false,
-                             false,
-                             false,
-                             false,
-                             false,
-                             false,
-                             false,
-                             false,
-                             Token::empty(),
-                             Token::empty()};
+    Attrs* attrs = new Attrs{
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        Token::empty(),
+        Token::empty()};
     attr_toks_.clear();
     do
     {
@@ -1180,17 +1181,18 @@ void Parser::check_size_count_decls(
                  * one.
                  */
                 if (sc_decl->attrs_ == nullptr)
-                    sc_decl->attrs_ = new Attrs{false,
-                                                false,
-                                                false,
-                                                false,
-                                                false,
-                                                false,
-                                                false,
-                                                false,
-                                                false,
-                                                Token::empty(),
-                                                Token::empty()};
+                    sc_decl->attrs_ = new Attrs{
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        Token::empty(),
+                        Token::empty()};
                 /*
                  * We can only be sure if a struct member is used by the size or
                  * count attribute after parsing; i.e., we cannot decide it
