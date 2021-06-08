@@ -517,6 +517,26 @@ void ocall_deepcopy_mix(
     set_sizeparam(s_out_2, 50, 50, 'F');
 }
 
+void ocall_deepcopy_nested_countparam_inout(CountParamNestedStruct* s)
+{
+    OE_TEST(s->num == 3);
+    check_countparam(&s->array_of_struct[0], 10, 10, 'A');
+    check_countparam(&s->array_of_struct[1], 20, 20, 'B');
+    check_countparam(&s->array_of_struct[2], 30, 30, 'C');
+
+    set_countparam(&s->array_of_struct[0], 10, 10, 'D', 0);
+    set_countparam(&s->array_of_struct[1], 20, 20, 'E', 0);
+    set_countparam(&s->array_of_struct[2], 30, 30, 'F', 0);
+}
+
+void ocall_deepcopy_nested_countparam_in(CountParamNestedStruct* s)
+{
+    OE_TEST(s->num == 3);
+    check_countparam(&s->array_of_struct[0], 10, 10, 'A');
+    check_countparam(&s->array_of_struct[1], 20, 20, 'B');
+    check_countparam(&s->array_of_struct[2], 30, 30, 'C');
+}
+
 void test_deepcopy_edl_ecalls(oe_enclave_t* enclave)
 {
     {
@@ -1068,6 +1088,39 @@ void test_deepcopy_edl_ecalls(oe_enclave_t* enclave)
         free(s_inout.ptr);
         free(s_out.ptr);
         free(s_out_2.ptr);
+    }
+
+    {
+        CountParamNestedStruct s;
+        CountParamStruct ns[3];
+        s.num = 3;
+        s.array_of_struct = ns;
+
+        set_countparam(&ns[0], 10, 10, 'A', 1);
+        set_countparam(&ns[1], 20, 20, 'B', 1);
+        set_countparam(&ns[2], 30, 30, 'C', 1);
+        OE_TEST(deepcopy_nested_countparam_inout(enclave, &s) == OE_OK);
+        check_countparam(&ns[0], 10, 10, 'D');
+        check_countparam(&ns[1], 20, 20, 'E');
+        check_countparam(&ns[2], 30, 30, 'F');
+        free(ns[0].ptr);
+        free(ns[1].ptr);
+        free(ns[2].ptr);
+    }
+
+    {
+        CountParamNestedStruct s;
+        CountParamStruct ns[3];
+        s.num = 3;
+        s.array_of_struct = ns;
+
+        set_countparam(&ns[0], 10, 10, 'A', 1);
+        set_countparam(&ns[1], 20, 20, 'B', 1);
+        set_countparam(&ns[2], 30, 30, 'C', 1);
+        OE_TEST(deepcopy_nested_countparam_in(enclave, &s) == OE_OK);
+        free(ns[0].ptr);
+        free(ns[1].ptr);
+        free(ns[2].ptr);
     }
 
     {

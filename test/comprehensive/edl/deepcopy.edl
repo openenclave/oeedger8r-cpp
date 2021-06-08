@@ -182,6 +182,9 @@ enclave {
                              [out] SizeParamStruct* s_out,
                              [user_check] SizeParamStruct* s_user_check,
                              [out] SizeParamStruct* s_out_2);
+
+    public void deepcopy_nested_countparam_inout([in, out] CountParamNestedStruct* s);
+    public void deepcopy_nested_countparam_in([in] CountParamNestedStruct* s);
   };
 
   untrusted
@@ -232,5 +235,8 @@ enclave {
                             [out] SizeParamStruct* s_out,
                             [user_check] SizeParamStruct* s_user_check,
                             [out] SizeParamStruct* s_out_2);
+
+    void ocall_deepcopy_nested_countparam_inout([in, out] CountParamNestedStruct* s);
+    void ocall_deepcopy_nested_countparam_in([in] CountParamNestedStruct* s);
   };
 };

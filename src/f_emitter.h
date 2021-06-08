@@ -203,9 +203,9 @@ class FEmitter
         iterate_deep_copyable_fields(ut, [&](Decl* prop) {
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
-            std::string argcount =
-                pcount(prop, "_pargs_in->" + parent_expr + op);
-            std::string argsize = psize(prop, "_pargs_in->" + parent_expr + op);
+            std::string prefix = "_pargs_in->" + parent_expr + op;
+            std::string argcount = pcount(prop, prefix);
+            std::string argsize = psize(prop, prefix);
             std::string cond = parent_condition + " && " + (is_out ? "!" : "") +
                                "_pargs_in->" + expr;
             std::string mt = mtype_str(prop);
@@ -217,8 +217,7 @@ class FEmitter
             if (!ut)
                 return;
 
-            std::string count =
-                count_attr_str(prop->attrs_->count_, "_pargs_in->");
+            std::string count = count_attr_str(prop->attrs_->count_, prefix);
 
             if (count == "1" || count == "")
             {
@@ -233,8 +232,8 @@ class FEmitter
                 out() << indent + "for (size_t " + idx + " = 0; " + idx +
                              " < " + count + "; " + idx + "++)"
                       << indent + "{";
-                std::string cond = parent_condition + " && _pargs_in->" +
-                                   parent_expr + op + prop->name_;
+                std::string cond =
+                    parent_condition + " && " + prefix + prop->name_;
                 set_pointers_deep_copy(
                     cond, expr, cmd, prop, level + 1, indent + "    ", is_out);
                 out() << indent + "}";
