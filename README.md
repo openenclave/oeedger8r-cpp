@@ -10,7 +10,7 @@ An implementation of oeedger8r in C++
 - cmake 3.1 or later
 - C++ compiler with `C++ 11` support.
 
-The default C++ compilers and cmake that come with Ubuntu 16.04, Ubutnu 18.04 ought to be sufficient for compiling
+The default C++ compilers and cmake that come with Ubuntu 16.04, Ubuntu 18.04 ought to be sufficient for compiling
 oeedger8r.
 On Windows, VS 2017 Build Tools or later should be sufficient.
 
