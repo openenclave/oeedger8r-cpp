@@ -303,8 +303,9 @@ class WEmitter
         iterate_deep_copyable_fields(ut, [&](Decl* prop) {
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
-            std::string argcount = pcount(prop, "_args." + parent_expr + op);
-            std::string argsize = psize(prop, "_args." + parent_expr + op);
+            std::string prefix = "_args." + parent_expr + op;
+            std::string argcount = pcount(prop, prefix);
+            std::string argsize = psize(prop, prefix);
             std::string cond = parent_condition + " && " + expr;
             out() << indent + "if (" + cond + ")"
                   << indent + "    OE_ADD_ARG_SIZE(" + buffer_size + ", " +
@@ -314,7 +315,7 @@ class WEmitter
             if (!ut)
                 return;
 
-            std::string count = count_attr_str(prop->attrs_->count_, "_args.");
+            std::string count = count_attr_str(prop->attrs_->count_, prefix);
 
             if (count == "1" || count == "")
             {
@@ -412,8 +413,9 @@ class WEmitter
         iterate_deep_copyable_fields(ut, [&](Decl* prop) {
             std::string op = *parent_expr.rbegin() == ']' ? "." : "->";
             std::string expr = parent_expr + op + prop->name_;
-            std::string argcount = pcount(prop, "_args." + parent_expr + op);
-            std::string argsize = psize(prop, "_args." + parent_expr + op);
+            std::string prefix = "_args." + parent_expr + op;
+            std::string argcount = pcount(prop, prefix);
+            std::string argsize = psize(prop, prefix);
             std::string cond = parent_condition + " && " + expr;
             std::string mt = mtype_str(prop);
             out() << indent + "if (" + cond + ")"
@@ -424,7 +426,7 @@ class WEmitter
             if (!ut)
                 return;
 
-            std::string count = count_attr_str(prop->attrs_->count_, "_args.");
+            std::string count = count_attr_str(prop->attrs_->count_, prefix);
 
             if (count == "1" || count == "")
             {
@@ -511,8 +513,6 @@ class WEmitter
          */
         out() << indent + "if (" + expr + ")" << indent + "{";
         {
-            if (!parent_expr.empty())
-                parent_expr += ".";
             std::string argcount = pcount(p, parent_expr);
             std::string argsize = psize(p, parent_expr);
             std::string p_type = atype_str(p->type_);
