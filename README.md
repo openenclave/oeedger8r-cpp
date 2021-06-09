@@ -54,7 +54,7 @@ This should produce output similar to:
 -- Detecting CXX compile features
 -- Detecting CXX compile features - done
 -- Configuring done
--- Generating done
+-- Generating do
 -- Build files have been written to: oeedger8r-cpp/build
 ```
 
