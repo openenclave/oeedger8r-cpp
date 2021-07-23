@@ -1,6 +1,19 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+import groovy.json.JsonSlurper
+
+def allowedCommitters = [
+    'anakrish@microsoft.com',
+    'brmclare@microsoft.com',
+    'chrisyan@microsoft.com',
+    'marupire@microsoft.com',
+    'mishih@microsoft.com',
+    'rosan@microsoft.com'
+]
+
+String IGNORED_DIRS = "^(docs)|\\.md\$"
+
 def cmakeBuildoeedger8r(String BUILD_CONFIG, String COMPILER) {
     /* Build oeedger8r based on build config, compiler and platform */
     cleanWs()
@@ -56,8 +69,84 @@ pipeline {
     options {
         timeout(time: 30, unit: 'MINUTES')
     }
-    agent any
+    agent {
+        label 'nonSGX-ubuntu-2004'
+    }
     stages {
+        stage("Pre-flight checks") {
+            stages {
+                stage("Check commit signature") {
+                    when { 
+                        not {
+                            anyOf {
+                                branch 'master';
+                                branch 'staging';
+                                branch 'trying'
+                            }
+                        }
+                    }
+                    steps {
+                        cleanWs()
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: scm.branches,
+                            doGenerateSubmoduleConfigurations: false,
+                            extensions: [[$class: 'SubmoduleOption',
+                                            disableSubmodules: true,
+                                            recursiveSubmodules: false,
+                                            trackingSubmodules: false]], 
+                            submoduleCfg: [],
+                            userRemoteConfigs: scm.userRemoteConfigs
+                        ])
+                        script {
+                            commitHash = sh(
+                                script: 'git rev-parse HEAD',
+                                returnStdout: true
+                            ).trim()
+                            commitVerificationJSON = sh (
+                                script: """
+                                        curl https://api.github.com/repos/openenclave/oeedger8r-cpp/commits/${commitHash}
+                                        """,
+                                returnStdout: true
+                            ).trim()
+                            def jsonSlurper = new JsonSlurper()
+                            def commitObject = jsonSlurper.parseText(commitVerificationJSON)
+                            Boolean verifiedCommit = commitObject.commit.verification.verified
+                            if (verifiedCommit) {
+                                assert allowedCommitters.contains(commitObject.commit.author.email)
+                            } else {
+                                error("Commit failed verification. Is it signed?")
+                            }
+                        }
+                    }
+                }
+                stage("Compare changes") {
+                    steps {
+                        cleanWs()
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: scm.branches + [[name: '*/master']],
+                            doGenerateSubmoduleConfigurations: false,
+                            extensions: [[$class: 'SubmoduleOption',
+                                            disableSubmodules: true,
+                                            recursiveSubmodules: false,
+                                            trackingSubmodules: false]], 
+                            submoduleCfg: [],
+                            userRemoteConfigs: scm.userRemoteConfigs
+                        ])
+                        script {
+                            // Check if git diff vs origin/master contains changes outside of ignored directories
+                            gitChanges = sh (
+                                script: """
+                                        git diff --name-only HEAD origin/master | grep --invert-match --extended-regexp \'${IGNORED_DIRS}\' || true
+                                        """,
+                                returnStdout: true
+                            ).trim()
+                        }
+                    }
+                }
+            }
+        }
         stage('Parallel tests') {
             parallel {
                 stage('Ubuntu 20.04 RelWithDebInfo') { steps { node("nonSGX-ubuntu-2004")  { cmakeBuildoeedger8r("RelWithDebInfo", "clang-10")}}}
