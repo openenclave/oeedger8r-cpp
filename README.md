@@ -2,7 +2,7 @@
 An implementation of oeedger8r in C++
 
 [comment]: <> (Switch to HTTPS upon completion of http://github.com/openenclave-ci/test-infra/issues/40)
-[![Build status](https://oe-prow-status.westus2.cloudapp.azure.com//badge.svg?jobs=ci-oeedger8r-cpp-*)](https://oe-prow-status.westus2.cloudapp.azure.com//badge.svg?jobs=ci-oeedger8r-cpp-*)
+[![Build Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/Bors%20-%20oeedger8r-cpp/job/master/badge/icon)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/Bors%20-%20oeedger8r-cpp/job/master/)
 
 # Prerequisites
 
