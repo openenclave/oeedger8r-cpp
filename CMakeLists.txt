@@ -35,11 +35,15 @@ if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
        DESTINATION "${PROJECT_SOURCE_DIR}/.git/hooks")
 endif ()
 
+option(BUILD_TESTS "Build oeedger8r virtual environment tests" ON)
+
 set(CMAKE_CXX_STANDARD 11)
 
 add_subdirectory(src)
 
-enable_testing()
-add_subdirectory(test)
+if (BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(test)
+endif ()
 
 option(CODE_COVERAGE "Enable code coverage testing" OFF)
