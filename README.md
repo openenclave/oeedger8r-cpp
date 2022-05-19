@@ -2,7 +2,7 @@
 An implementation of oeedger8r in C++
 
 [comment]: <> (Switch to HTTPS upon completion of http://github.com/openenclave-ci/test-infra/issues/40)
-[![Build status](https://oe-prow-status.westus2.cloudapp.azure.com//badge.svg?jobs=ci-oeedger8r-cpp-*)](https://oe-prow-status.westus2.cloudapp.azure.com//badge.svg?jobs=ci-oeedger8r-cpp-*)
+[![Build Status](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/Bors%20-%20oeedger8r-cpp/job/master/badge/icon)](https://oe-jenkins-dev.westeurope.cloudapp.azure.com/job/Bors%20-%20oeedger8r-cpp/job/master/)
 
 # Prerequisites
 
@@ -10,13 +10,12 @@ An implementation of oeedger8r in C++
 - cmake 3.1 or later
 - C++ compiler with `C++ 11` support.
 
-The default C++ compilers and cmake that come with Ubuntu 16.04, Ubutnu 18.04 ought to be sufficient for compiling
-oeedger8r.
+The default C++ compilers and cmake that come with Ubuntu 20.04, Ubuntu 18.04 ought to be sufficient for compiling oeedger8r.
 On Windows, VS 2017 Build Tools or later should be sufficient.
 
 ## Platforms
 The following platforms are tested in CI
-- Ubuntu 16.04
+- Ubuntu 20.04
 - Ubuntu 18.04
 - Windows Server 2019
 
