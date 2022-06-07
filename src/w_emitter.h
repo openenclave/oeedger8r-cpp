@@ -152,9 +152,13 @@ class WEmitter
             << "    /* Serialize buffer inputs (in and in-out parameters). */";
         serialize_buffer_inputs(f);
         out() << "    "
-              << "    /* Copy args structure (now filled) to input buffer. */"
-              << "    memcpy(_pargs_in, &_args, sizeof(*_pargs_in));"
-              << ""
+              << "    /* Copy args structure (now filled) to input buffer. */";
+        if (!gen_t())
+            out() << "    memcpy(_pargs_in, &_args, sizeof(*_pargs_in));";
+        else /* use the hardened version of memcpy for host writes */
+            out() << "    oe_memcpy_with_barrier(_pargs_in, &_args, "
+                     "sizeof(*_pargs_in));";
+        out() << ""
               << "    /* Call " + other + " function. */"
               << "    if ((_result = " + call + "(";
         if (!gen_t())
@@ -462,6 +466,12 @@ class WEmitter
                 std::string argsize = psize(p, "_args.");
                 std::string cmd = p->attrs_->inout_ ? "OE_WRITE_IN_OUT_PARAM"
                                                     : "OE_WRITE_IN_PARAM";
+
+                /* use OE_WRITE_IN_OUT_PARAM_WITH_BARRIER or
+                 * OE_WRITE_IN_PARAM_WITH_BARRIER in the enclave code */
+                if (gen_t())
+                    cmd += "_WITH_BARRIER";
+
                 out() << "    if (" + p->name_ + ")"
                       << "        " + cmd + "(" + p->name_ + ", " + argcount +
                              ", " + argsize + ", " + mt + ");";

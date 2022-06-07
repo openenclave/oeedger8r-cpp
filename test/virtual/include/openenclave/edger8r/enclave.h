@@ -166,6 +166,8 @@ void oe_free_switchless_ocall_buffer(void* buffer);
 void* oe_malloc(size_t size);
 void oe_free(void* buffer);
 
+void* oe_memcpy_with_barrier(void* dest, const void* src, size_t count);
+
 /**
  * For hand-written enclaves, that use the older calling mechanism, define empty
  * ecall tables.
