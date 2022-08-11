@@ -72,6 +72,9 @@ class HEmitter
               << ""
               << "OE_EXTERNC_BEGIN"
               << "";
+        if (gen_t_h_)
+            out() << "extern bool oe_edger8r_secure_unserialize;"
+                  << "";
         if (!gen_t_h_)
             out() << create_prototype(edl_->name_) + ";"
                   << "";

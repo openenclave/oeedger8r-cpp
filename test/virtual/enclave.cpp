@@ -68,6 +68,11 @@ extern "C"
         return _enclave->free(ptr);
     }
 
+    void oe_memcpy_aligned(void* dest, const void* src, size_t count)
+    {
+        memcpy(dest, src, count);
+    }
+
     void* oe_memcpy_with_barrier(void* dest, const void* src, size_t count)
     {
         return memcpy(dest, src, count);

@@ -168,6 +168,8 @@ void oe_free(void* buffer);
 
 void* oe_memcpy_with_barrier(void* dest, const void* src, size_t count);
 
+void oe_memcpy_aligned(void* dest, const void* src, size_t count);
+
 /**
  * For hand-written enclaves, that use the older calling mechanism, define empty
  * ecall tables.
@@ -175,6 +177,13 @@ void* oe_memcpy_with_barrier(void* dest, const void* src, size_t count);
 #define OE_DEFINE_EMPTY_ECALL_TABLE()                             \
     OE_EXPORT_CONST oe_ecall_func_t __oe_ecalls_table[] = {NULL}; \
     OE_EXPORT_CONST size_t __oe_ecalls_table_size = 0
+
+/* OE_WEAK */
+#ifdef __GNUC__
+#define OE_WEAK __attribute__((__weak__))
+#else
+#define OE_WEAK
+#endif
 
 #if __x86_64__ || _M_X64
 /**

@@ -51,10 +51,12 @@ class CEmitter
         autogen_preamble(out());
         out() << "#include \"" + edl_->name_ + "_t.h\""
               << ""
-              << "#include <openenclave/edger8r/" +
-                     std::string(gen_t_c_ ? "enclave.h>" : "host.h>")
+              << "#include <openenclave/edger8r/enclave.h>"
               << ""
               << "OE_EXTERNC_BEGIN"
+              << ""
+              << "/* Set to false to bypass secure unserializing ocall return values */"
+              << "OE_WEAK bool oe_edger8r_secure_unserialize = true;"
               << ""
               << "/**** Trusted function IDs ****/";
         trusted_function_ids();

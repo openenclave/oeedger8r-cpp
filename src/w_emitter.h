@@ -113,8 +113,10 @@ class WEmitter
               << "    size_t _total_buffer_size = 0;"
               << "    uint8_t* _buffer = NULL;"
               << "    uint8_t* _input_buffer = NULL;"
-              << "    uint8_t* _output_buffer = NULL;"
-              << "    size_t _input_buffer_offset = 0;"
+              << "    uint8_t* _output_buffer = NULL;";
+        if (gen_t())
+            out() << "    uint8_t* _output_buffer_trusted = NULL;";
+        out() << "    size_t _input_buffer_offset = 0;"
               << "    size_t _output_buffer_offset = 0;"
               << "    size_t _output_bytes_written = 0;";
         if (has_deep_copy_out_)
@@ -179,14 +181,6 @@ class WEmitter
               << "             &_output_bytes_written)) != OE_OK)"
               << "        goto done;"
               << ""
-              << "    /* Setup output arg struct pointer. */"
-              << "    _pargs_out = (" + args_t + "*)_output_buffer;"
-              << "    OE_ADD_SIZE(_output_buffer_offset, sizeof(*_pargs_out));"
-              << "    "
-              << "    /* Check if the call succeeded. */"
-              << "    if ((_result = _pargs_out->oe_result) != OE_OK)"
-              << "        goto done;"
-              << ""
               << "    /* Currently exactly _output_buffer_size bytes must be "
                  "written. */"
               << "    if (_output_bytes_written != _output_buffer_size)"
@@ -194,6 +188,37 @@ class WEmitter
               << "        _result = OE_FAILURE;"
               << "        goto done;"
               << "    }"
+              << "";
+        if (gen_t())
+            out() << "    /* Allocate an enclave buffer for reading the host buffer */"
+                  << "    if (oe_edger8r_secure_unserialize)"
+                  << "    {"
+                  << "        _output_buffer_trusted = (uint8_t*)oe_malloc(_output_buffer_size);"
+                  << "        if (!_output_buffer_trusted)"
+                  << "        {"
+                  << "            _result = OE_OUT_OF_MEMORY;"
+                  << "            goto done;"
+                  << "        }"
+                  << ""
+                  << "        /* _output_buffer and _output_buffer_size should be always 8-byte aligned */"
+                  << "        if (((uint64_t)_output_buffer % 8) != 0 || (_output_buffer_size % 8) != 0)"
+                  << "        {"
+                  << "            _result = OE_FAILURE;"
+                  << "            goto done;"
+                  << "        }"
+                  << "        oe_memcpy_aligned(_output_buffer_trusted, _output_buffer, _output_buffer_size);"
+                  << ""
+                  << "        /* Now _output_buffer points to the enclave memory */"
+                  << "        _output_buffer = _output_buffer_trusted;"
+                  << "    }"
+                  << "";
+        out() << "    /* Setup output arg struct pointer. */"
+              << "    _pargs_out = (" + args_t + "*)_output_buffer;"
+              << "    OE_ADD_SIZE(_output_buffer_offset, sizeof(*_pargs_out));"
+              << ""
+              << "    /* Check if the call succeeded. */"
+              << "    if ((_result = _pargs_out->oe_result) != OE_OK)"
+              << "        goto done;"
               << ""
               << "    /* Unmarshal return value and out, in-out parameters. */";
         if (f->rtype_->tag_ != Void)
@@ -233,8 +258,12 @@ class WEmitter
               << ""
               << "done:"
               << "    if (_buffer)"
-              << "        " + free_fcn + "(_buffer);";
-        out() << "";
+              << "        " + free_fcn + "(_buffer);"
+              << "";
+        if (gen_t())
+            out() << "    if (_output_buffer_trusted)"
+                  << "        oe_free(_output_buffer_trusted);"
+                  << "";
         if (has_deep_copy_out_)
         {
             out() << "    if (_deepcopy_out_buffer)"
