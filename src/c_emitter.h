@@ -55,7 +55,8 @@ class CEmitter
               << ""
               << "OE_EXTERNC_BEGIN"
               << ""
-              << "/* Set to false to bypass secure unserializing ocall return values */"
+              << "/* Set to false to bypass secure unserializing ocall return "
+                 "values */"
               << "OE_WEAK bool oe_edger8r_secure_unserialize = true;"
               << ""
               << "/**** Trusted function IDs ****/";
