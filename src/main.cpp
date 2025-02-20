@@ -10,6 +10,10 @@
 #include "h_emitter.h"
 #include "parser.h"
 
+#ifdef __linux__
+#include <filesystem>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -75,7 +79,9 @@ static void _ensure_directory(const std::string& dir)
         CreateDirectoryA(subdir.c_str(), NULL);
     } while (pos != std::string::npos);
 #else
-    system(("mkdir -p " + dir).c_str());
+    namespace fs = std::filesystem;
+    fs::path path_dir(dir);
+    fs::create_directories(path_dir);
 #endif
 }
 
