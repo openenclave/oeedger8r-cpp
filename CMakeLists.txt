@@ -37,7 +37,7 @@ endif ()
 
 option(BUILD_TESTS "Build oeedger8r virtual environment tests" ON)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 add_subdirectory(src)
 
