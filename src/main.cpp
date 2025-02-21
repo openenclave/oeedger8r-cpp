@@ -12,9 +12,7 @@
 
 #ifdef __linux__
 #include <filesystem>
-#endif
-
-#ifdef _WIN32
+#else
 #include <windows.h>
 #endif
 
