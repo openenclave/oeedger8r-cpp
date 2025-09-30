@@ -92,10 +92,10 @@ void test_array_edl_ocalls()
     {
         uint8_t data1[IV_SIZE];
         for (uint32_t i = 0; i < IV_SIZE; ++i)
-            data1[i] = i;
+            data1[i] = static_cast<uint8_t>(i);
         uint8_t data2[EXT_IV_SIZE];
         for (uint32_t i = 0; i < EXT_IV_SIZE; ++i)
-            data2[i] = i;
+            data2[i] = static_cast<uint8_t>(i);
 
         OE_TEST(ocall_named_dims(data1, data2) == OE_OK);
     }

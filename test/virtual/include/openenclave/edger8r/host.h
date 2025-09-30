@@ -110,7 +110,7 @@ OE_INLINE void* oe_malloc(size_t size)
 
 OE_INLINE void oe_free(void* ptr)
 {
-    return free(ptr);
+    free(ptr);
 }
 
 OE_INLINE size_t oe_strlen(const char* s)

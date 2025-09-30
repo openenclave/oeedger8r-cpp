@@ -387,7 +387,11 @@ MyStruct1 ecall_struct1(
 char* ecall_struct_node1(char ch, struct MyStruct_node* list)
 {
     OE_TEST(oe_is_outside_enclave(list, sizeof(*list)));
+#ifdef _WIN32
+    strncpy_s(&list->data, sizeof(list->data), &ch, sizeof(ch));
+#else
     strncpy(&list->data, &ch, sizeof(ch));
+#endif
     list->next = NULL;
 
     return &list->data;

@@ -39,6 +39,36 @@ option(BUILD_TESTS "Build oeedger8r virtual environment tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# Set Windows-specific compiler flags
+if (WIN32 AND MSVC)
+  # Enable warning level 3 and treat warnings as errors
+  add_compile_options(/W3 /WX)
+
+  # Enable specific warnings as errors
+  add_compile_options(
+    /we4018 # signed/unsigned mismatch
+    /we4055 # type cast from data pointer to function pointer
+    /we4146 # unary minus operator applied to unsigned type
+    /we4242 # conversion from 'type1' to 'type2', possible loss of data
+    /we4244 # conversion from 'type1' to 'type2', possible loss of data
+    /we4267 # conversion from 'size_t' to 'type', possible loss of data
+    /we4302 # truncation from 'type1' to 'type2'
+    /we4308 # negative integral constant converted to unsigned type
+    /we4509 # nonstandard extension used: function uses SEH and object has destructor
+    /we4510 # default constructor could not be generated
+    /we4532 # jump out of __finally block has undefined behavior
+    /we4533 # initialization of variable is skipped by jump instruction
+    /we4610 # object can never be instantiated - user-defined constructor required
+    /we4611 # interaction between setjmp and C++ object destruction is non-portable
+    /we4700 # uninitialized local variable used
+    /we4701 # potentially uninitialized local variable used
+    /we4703 # potentially uninitialized local pointer variable used
+    /we4789 # buffer overrun when using secure functions
+    /we4995 # function marked as #pragma deprecated
+    /we4996 # function declared deprecated
+  )
+endif ()
+
 add_subdirectory(src)
 
 if (BUILD_TESTS)

@@ -14,7 +14,11 @@ void test_string_edl_ocalls()
     const char* str_value = "Hello, World\n";
 
     char str[50];
-    sprintf(str, "%s", str_value);
+#ifdef _WIN32
+    sprintf_s(str, sizeof(str), "%s", str_value);
+#else
+    snprintf(str, sizeof(str), "%s", str_value);
+#endif
 
     // char*
     OE_TEST(ocall_string_fun1(str) == OE_OK);
@@ -29,7 +33,11 @@ void test_string_edl_ocalls()
     OE_TEST(strcmp(str, "Goodbye\n") == 0);
 
     // Restore value.
-    sprintf(str, "%s", str_value);
+#ifdef _WIN32
+    sprintf_s(str, sizeof(str), "%s", str_value);
+#else
+    snprintf(str, sizeof(str), "%s", str_value);
+#endif
 
     // char* user check.
     OE_TEST(ocall_string_fun5(str) == OE_OK);
