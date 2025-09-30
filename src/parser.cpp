@@ -19,8 +19,14 @@ std::map<std::string, Edl*> Parser::cache_;
 
 static bool _is_file(const std::string& path)
 {
+#ifdef _WIN32
+    FILE* f = nullptr;
+    errno_t err = fopen_s(&f, path.c_str(), "r");
+    if (err == 0 && f)
+#else
     FILE* f = fopen(path.c_str(), "r");
     if (f)
+#endif
     {
         fclose(f);
         return true;

@@ -44,7 +44,7 @@ int enc_deepcopy_out_overflow(CountSizeParamStruct* s)
 
 void enc_host_test()
 {
-    char* buf;
+    char* buf = (char*)malloc(10);
     int ret_val = -1;
     OE_TEST(
         host_add_overflow(&ret_val, buf, OE_UINT64_MAX) == OE_INTEGER_OVERFLOW);

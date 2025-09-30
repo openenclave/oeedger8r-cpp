@@ -1,5 +1,6 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
+#include <inttypes.h>
 #include <openenclave/internal/tests.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,7 +15,7 @@ void configure_type(const char* type_name, type_enum_t t)
     OE_TEST(get_host_sizeof(&host_size, t) == OE_OK);
 
     printf(
-        "%s: size in host = %lu, size in enclave = %lu.",
+        "%s: size in host = %" PRIu64 ", size in enclave = %" PRIu64 ".",
         type_name,
         host_size,
         enc_size);
