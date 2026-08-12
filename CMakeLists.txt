@@ -42,7 +42,11 @@ set(CMAKE_CXX_STANDARD 17)
 # Set Windows-specific compiler flags
 if (WIN32 AND MSVC)
   # Enable warning level 3 and treat warnings as errors
-  add_compile_options(/W3 /WX)
+  add_compile_options(/W3 /WX /guard:cf)
+
+  # Enable Control Flow Guard for generated executables and DLLs.
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /Guard:CF")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /Guard:CF")
 
   # Enable specific warnings as errors
   add_compile_options(
