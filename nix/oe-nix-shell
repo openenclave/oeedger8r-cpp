@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# Copyright (c) Open Enclave SDK contributors.
+# Licensed under the MIT License.
+
+USAGE="
+Usage:  oe-nix-shell [command]
+        oe-nix-shell -help
+
+To enter into OE SDK build shell, type oe-nix-shell
+without any arguments. It will bring up a prompt:
+   [nix-shell:pwd]$
+
+This is a nix-shell that has all the tools necessary
+for building the OE SDK. To quit the shell, type exit.
+
+To execute a command and immediately exit the shell,
+provide the command in quotes.
+   oe-nix-shell \"cd build && make -j 16\"
+
+This will enter the shell, change to the build folder, 
+build the SDK and exit the shell.
+"
+
+# Print usage if wrong arguments supplied.
+if [ "$#" -gt 1 ]; then
+  echo "${USAGE}"
+  exit 1
+fi
+
+# Print usage if requested.
+if [ "$1" == "-help" ]; then
+  echo "${USAGE}"
+  exit 0
+fi
+
+# If no command is specified, use return;
+# as the command to prevent nix-shell from 
+# exiting.
+CMD="$1"
+if [ "$#" -eq 0 ]; then
+  CMD="return;"
+fi
+
+# Fetch the directory of oe-nix-shell script.
+OE_NIX_SHELL_SCRIPT_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+
+# Command to enter into OE SDK nix shell
+OE_NIX_SHELL_CMD="nix-shell \"${OE_NIX_SHELL_SCRIPT_DIR}/shell.nix\" --pure \
+  --command \"neofetch; \
+  echo Welcome to OE SDK build shell; \
+  ${CMD}\""
+
+# If nix is available in path, use it.
+if command -v nix-shell &> /dev/null
+then
+  bash -c "${OE_NIX_SHELL_CMD}" 
+  exit 0
+fi
+
+
+# Path to profile in single user mode install of nix.
+NIX_PROFILE=~/.nix-profile/etc/profile.d/nix.sh
+
+# If root user, then install nix as per instructions here:
+#  https://github.com/NixOS/nix/issues/936
+if [ "$EUID" -eq 0 ]; then
+
+  # Set user so that nix profile gets loaded correctly.
+  export USER=root
+
+  # If a profile exists, the load it.
+  if test -f "${NIX_PROFILE}"; then
+    source "${NIX_PROFILE}"
+  fi
+
+  #If nix-shell exists, use it.
+  if command -v nix-shell > /dev/null; then
+    bash -c "${OE_NIX_SHELL_CMD}"
+    exit 0
+  fi
+
+  # Install nix for root user.
+  # First create /nix folder
+  mkdir -p -m 0755 /nix
+
+  # Create empty build-users-group
+  mkdir -p /etc/nix
+  echo "build-users-group =" > /etc/nix/nix.conf
+
+  # Install nix.
+  # Assume debian based distro for now.
+  apt-get install -y curl
+  wget https://nixos.org/nix/install -O install.sh
+  curl -L https://nixos.org/nix/install | sh
+
+  bash -c "source ${NIX_PROFILE} && ${OE_NIX_SHELL_CMD}"
+  exit 0
+fi
+
+
+# Path to nix-user-chroot binary.
+NIX_USER_CHROOT=~/.oe-nix/nix-user-chroot
+
+# Path to nix directory
+NIX_DIR=~/.oe-nix/.nix
+
+# Ensure that OE nix directory exists.
+mkdir -m 0755 -p ${NIX_DIR}
+# Download nix-user-chroot
+if ! test -f "${NIX_USER_CHROOT}"
+then
+  echo "Downloading nix-user-chroot"
+  mkdir -p ~/.oe-nix
+  wget https://github.com/nix-community/nix-user-chroot/releases/download/1.1.1/nix-user-chroot-bin-1.1.1-x86_64-unknown-linux-musl \
+         -O "${NIX_USER_CHROOT}"
+  chmod +x "${NIX_USER_CHROOT}"
+fi
+
+
+# Check if nix has been installed in the user chroot.
+if ! "${NIX_USER_CHROOT}"  "${NIX_DIR}" \
+        bash -c "source ${NIX_PROFILE} && \
+              which nix-shell > /dev/null"
+then
+  # Install nix in the user chroot.
+  "${NIX_USER_CHROOT}" "${NIX_DIR}" \
+         bash -c  "sh <(curl -L https://nixos.org/nix/install) --no-daemon"
+fi
+
+# Enter the shell.
+"${NIX_USER_CHROOT}" "${NIX_DIR}" \
+  bash -c "source ${NIX_PROFILE} && ${OE_NIX_SHELL_CMD}"
+
